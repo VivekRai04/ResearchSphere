@@ -1,0 +1,1 @@
+- [PDF extraction runtime](pdf-extraction-runtime.md) — pdf-parse v2 needs a directly available canvas runtime in the bundled Node server.

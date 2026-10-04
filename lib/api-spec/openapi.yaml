@@ -1,0 +1,1436 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: ResearchSphere repository API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: Auth
+    description: Browser authentication endpoints.
+  - name: Papers
+    description: Research paper discovery, uploads, and versions.
+  - name: Reviews
+    description: Faculty review workflow.
+  - name: Library
+    description: Personal bookmarks and submissions.
+  - name: Administration
+    description: Department, category, reviewer, and analytics management.
+  - name: Storage
+    description: PDF upload and serving.
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /auth/user:
+    get:
+      operationId: getCurrentAuthUser
+      tags: [Auth]
+      summary: Get the currently authenticated user
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+      responses:
+        "200":
+          description: Current authentication state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUserEnvelope"
+  /login:
+    post:
+      operationId: loginUser
+      tags: [Auth]
+      summary: Login via email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginUserBody'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserEnvelope'
+        '401':
+          description: Unauthorized
+  /register:
+    post:
+      operationId: registerUser
+      tags: [Auth]
+      summary: Register a new profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUserBody'
+      responses:
+        '200':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserEnvelope'
+        '400':
+          description: Bad request
+  /logout:
+    get:
+      operationId: logoutBrowserSession
+      tags: [Auth]
+      summary: End the browser session
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+        - name: returnTo
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect after logout.
+  /mobile-auth/token-exchange:
+    post:
+      operationId: exchangeMobileAuthorizationCode
+      tags: [Auth]
+      summary: Exchange a mobile OIDC authorization code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MobileTokenExchangeInput"
+      responses:
+        "200":
+          description: Mobile session created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileTokenExchangeSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+  /mobile-auth/logout:
+    post:
+      operationId: logoutMobileSession
+      tags: [Auth]
+      summary: End a mobile session
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+      responses:
+        "200":
+          description: Session ended.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutSuccess"
+  /me/profile:
+    get:
+      operationId: getMyProfile
+      tags: [Auth]
+      summary: Get the signed-in user's ResearchSphere profile
+      responses:
+        "200":
+          description: Profile and role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /papers:
+    get:
+      operationId: listPapers
+      tags: [Papers]
+      summary: Search approved papers
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: semantic
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: departmentId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: year
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: researchArea
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: paperType
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Matching approved papers.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Paper"
+    post:
+      operationId: submitPaper
+      tags: [Papers]
+      summary: Submit a paper for faculty review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaperInput"
+      responses:
+        "201":
+          description: Paper submitted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paper"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: An identical PDF already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /papers/my-analytics:
+    get:
+      operationId: getMyAnalytics
+      tags: [Papers]
+      summary: Get analytics for the logged-in author's papers
+      responses:
+        "200":
+          description: Analytics data.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyAnalytics"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /papers/metadata-preview:
+    post:
+      operationId: previewPaperMetadata
+      tags: [Papers]
+      summary: Extract metadata from an uploaded PDF for confirmation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetadataPreviewInput"
+      responses:
+        "200":
+          description: Extracted metadata and duplicate check.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataPreview"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /papers/{paperId}:
+    get:
+      operationId: getPaper
+      tags: [Papers]
+      summary: Get a paper and its most related approved research
+      parameters:
+        - $ref: "#/components/parameters/PaperId"
+      responses:
+        "200":
+          description: Paper and related papers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaperDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /papers/{paperId}/download:
+    get:
+      operationId: downloadPaperPdf
+      tags: [Papers]
+      summary: Download a paper PDF
+      parameters:
+        - $ref: "#/components/parameters/PaperId"
+      responses:
+        "200":
+          description: PDF content.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /papers/{paperId}/versions:
+    post:
+      operationId: submitPaperRevision
+      tags: [Papers]
+      summary: Upload a revised PDF for a paper requiring revision
+      parameters:
+        - $ref: "#/components/parameters/PaperId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaperRevisionInput"
+      responses:
+        "201":
+          description: Revision submitted for review.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paper"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /papers/{paperId}/comments:
+    post:
+      operationId: addPaperComment
+      tags: [Papers]
+      summary: Add a comment to a published paper
+      parameters:
+        - $ref: "#/components/parameters/PaperId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentInput"
+      responses:
+        "201":
+          description: Comment added.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paper"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /me/submissions:
+    get:
+      operationId: listMySubmissions
+      tags: [Library]
+      summary: List the signed-in user's submissions
+      responses:
+        "200":
+          description: Papers submitted by the current user.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Paper"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /me/bookmarks:
+    get:
+      operationId: listMyBookmarks
+      tags: [Library]
+      summary: List bookmarked papers
+      responses:
+        "200":
+          description: Saved approved papers.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Paper"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /papers/{paperId}/bookmark:
+    put:
+      operationId: addBookmark
+      tags: [Library]
+      summary: Save a paper to the current user's library
+      parameters:
+        - $ref: "#/components/parameters/PaperId"
+      responses:
+        "200":
+          description: Bookmark state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookmarkState"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: removeBookmark
+      tags: [Library]
+      summary: Remove a paper from the current user's library
+      parameters:
+        - $ref: "#/components/parameters/PaperId"
+      responses:
+        "200":
+          description: Bookmark state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookmarkState"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /me/collections:
+    get:
+      operationId: listMyCollections
+      tags: [Library]
+      summary: List custom reading lists
+      responses:
+        "200":
+          description: A list of collections.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Collection"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createCollection
+      tags: [Library]
+      summary: Create a new custom collection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectionInput"
+      responses:
+        "201":
+          description: Collection created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Collection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /me/collections/{collectionId}:
+    delete:
+      operationId: deleteCollection
+      tags: [Library]
+      summary: Delete a collection
+      parameters:
+        - name: collectionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Collection deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /me/collections/{collectionId}/papers/{paperId}:
+    put:
+      operationId: addPaperToCollection
+      tags: [Library]
+      summary: Add a saved paper to a collection
+      parameters:
+        - name: collectionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/PaperId"
+      responses:
+        "200":
+          description: Paper added.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: removePaperFromCollection
+      tags: [Library]
+      summary: Remove a paper from a collection
+      parameters:
+        - name: collectionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/PaperId"
+      responses:
+        "200":
+          description: Paper removed.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /review/queue:
+    get:
+      operationId: listReviewQueue
+      tags: [Reviews]
+      summary: List pending submissions for faculty review
+      responses:
+        "200":
+          description: Pending papers.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Paper"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /review/papers/{paperId}:
+    post:
+      operationId: reviewPaper
+      tags: [Reviews]
+      summary: Approve, reject, or request revision for a submission
+      parameters:
+        - $ref: "#/components/parameters/PaperId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewInput"
+      responses:
+        "200":
+          description: Updated paper review status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paper"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /departments:
+    get:
+      operationId: listDepartments
+      tags: [Administration]
+      summary: List departments
+      responses:
+        "200":
+          description: Department list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Department"
+  /admin/analytics:
+    get:
+      operationId: getAdminAnalytics
+      tags: [Administration]
+      summary: Get system-wide research analytics
+      responses:
+        "200":
+          description: Summary metrics and grouped breakdowns.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAnalytics"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/departments:
+    post:
+      operationId: createDepartment
+      tags: [Administration]
+      summary: Create a department
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentInput"
+      responses:
+        "201":
+          description: Department created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/departments/{departmentId}:
+    patch:
+      operationId: updateDepartment
+      tags: [Administration]
+      summary: Update a department
+      parameters:
+        - $ref: "#/components/parameters/DepartmentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentInput"
+      responses:
+        "200":
+          description: Updated department.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteDepartment
+      tags: [Administration]
+      summary: Delete an unused department
+      parameters:
+        - $ref: "#/components/parameters/DepartmentId"
+      responses:
+        "204":
+          description: Department deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Department is referenced by users or papers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/categories:
+    get:
+      operationId: listCategories
+      tags: [Administration]
+      summary: List research areas or paper types
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/CategoryKind"
+      responses:
+        "200":
+          description: Available categories.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+    post:
+      operationId: createCategory
+      tags: [Administration]
+      summary: Add a research area or paper type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "201":
+          description: Category created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/categories/{categoryId}:
+    patch:
+      operationId: updateCategory
+      tags: [Administration]
+      summary: Rename a research area or paper type
+      parameters:
+        - $ref: "#/components/parameters/CategoryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "200":
+          description: Updated category.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteCategory
+      tags: [Administration]
+      summary: Delete an unused category
+      parameters:
+        - $ref: "#/components/parameters/CategoryId"
+      responses:
+        "204":
+          description: Category deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Category is referenced by papers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [Administration]
+      summary: List users for role and reviewer management
+      responses:
+        "200":
+          description: App users.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createAdminUser
+      tags: [Administration]
+      summary: Create a new user with a specific role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAdminUserInput"
+      responses:
+        "201":
+          description: Created user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/users/{userId}/role:
+    patch:
+      operationId: updateUserRole
+      tags: [Administration]
+      summary: Assign a user role and department
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRoleInput"
+      responses:
+        "200":
+          description: Updated user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [Storage]
+      summary: Request a presigned URL for PDF upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlInput"
+      responses:
+        "200":
+          description: Presigned upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /storage/objects/{objectPath}:
+    get:
+      operationId: getStorageObject
+      tags: [Storage]
+      summary: Serve a protected or approved paper PDF
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: PDF content.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  parameters:
+    AuthorizationSessionHeader:
+      name: Authorization
+      in: header
+      required: false
+      schema:
+        type: string
+    SessionCookie:
+      name: sid
+      in: cookie
+      required: false
+      schema:
+        type: string
+    PaperId:
+      name: paperId
+      in: path
+      required: true
+      schema:
+        type: string
+    DepartmentId:
+      name: departmentId
+      in: path
+      required: true
+      schema:
+        type: string
+    CategoryId:
+      name: categoryId
+      in: path
+      required: true
+      schema:
+        type: string
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Invalid input.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Unauthorized:
+      description: Sign in is required.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Forbidden:
+      description: The current user does not have permission.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    ServerError:
+      description: The server could not complete the request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+    ErrorEnvelope:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: [string, "null"]
+          format: email
+        firstName:
+          type: [string, "null"]
+        lastName:
+          type: [string, "null"]
+        profileImageUrl:
+          type: [string, "null"]
+      required: [id, email, firstName, lastName, profileImageUrl]
+    AuthUserEnvelope:
+      type: object
+      properties:
+        user:
+          oneOf:
+            - $ref: "#/components/schemas/AuthUser"
+            - type: "null"
+      required: [user]
+    MobileTokenExchangeInput:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+        code_verifier:
+          type: string
+          minLength: 1
+        redirect_uri:
+          type: string
+          minLength: 1
+          format: uri
+        state:
+          type: string
+          minLength: 1
+        nonce:
+          type: string
+          minLength: 1
+      required: [code, code_verifier, redirect_uri, state]
+    MobileTokenExchangeSuccess:
+      type: object
+      properties:
+        token:
+          type: string
+      required: [token]
+    LogoutSuccess:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+      required: [success]
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: [string, "null"]
+          format: email
+        profileImageUrl:
+          type: [string, "null"]
+        role:
+          $ref: "#/components/schemas/UserRole"
+        departmentId:
+          type: [string, "null"]
+        departmentName:
+          type: [string, "null"]
+      required: [id, name, email, profileImageUrl, role, departmentId, departmentName]
+    UserRole:
+      type: string
+      enum: [STUDENT, REVIEWER, ADMIN]
+    PaperStatus:
+      type: string
+      enum: [PENDING_REVIEW, APPROVED, REJECTED, REVISION_REQUIRED]
+    ReviewDecision:
+      type: string
+      enum: [APPROVED, REJECTED, REVISION_REQUIRED]
+    CategoryKind:
+      type: string
+      enum: [RESEARCH_AREA, PAPER_TYPE]
+    Paper:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        abstract:
+          type: string
+        year:
+          type: integer
+        departmentId:
+          type: string
+        departmentName:
+          type: string
+        researchArea:
+          type: string
+        paperType:
+          type: string
+        doi:
+          type: [string, "null"]
+        objectPath:
+          type: [string, "null"]
+        fileHash:
+          type: [string, "null"]
+        keywords:
+          type: array
+          items:
+            type: string
+        status:
+          $ref: "#/components/schemas/PaperStatus"
+        uploadedById:
+          type: string
+        authorName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        versionNumber:
+          type: integer
+        latestReviewComment:
+          type: [string, "null"]
+        versions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaperVersion"
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaperComment"
+      required:
+        - id
+        - title
+        - abstract
+        - year
+        - departmentId
+        - departmentName
+        - researchArea
+        - paperType
+        - doi
+        - objectPath
+        - fileHash
+        - keywords
+        - status
+        - uploadedById
+        - authorName
+        - createdAt
+        - versionNumber
+        - latestReviewComment
+        - versions
+        - comments
+    PaperVersion:
+      type: object
+      properties:
+        versionNumber:
+          type: integer
+        objectPath:
+          type: [string, "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required: [versionNumber, objectPath, createdAt]
+    PaperComment:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        userName:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, userId, userName, content, createdAt]
+    CommentInput:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+      required: [content]
+    Collection:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        paperCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        papers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Paper"
+      required: [id, name, paperCount, createdAt]
+    CollectionInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+      required: [name]
+    PaperDetail:
+      type: object
+      properties:
+        paper:
+          $ref: "#/components/schemas/Paper"
+        related:
+          type: array
+          items:
+            $ref: "#/components/schemas/Paper"
+      required: [paper, related]
+    PaperInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        abstract:
+          type: string
+        year:
+          type: integer
+        departmentId:
+          type: string
+        researchArea:
+          type: string
+        paperType:
+          type: string
+        doi:
+          type: [string, "null"]
+        objectPath:
+          type: string
+          minLength: 1
+        keywords:
+          type: array
+          items:
+            type: string
+      required: [title, abstract, year, departmentId, researchArea, paperType, objectPath, keywords]
+    PaperRevisionInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        abstract:
+          type: string
+        objectPath:
+          type: string
+          minLength: 1
+        keywords:
+          type: array
+          items:
+            type: string
+      required: [title, abstract, objectPath, keywords]
+    MetadataPreviewInput:
+      type: object
+      properties:
+        objectPath:
+          type: string
+          minLength: 1
+      required: [objectPath]
+    MetadataPreview:
+      type: object
+      properties:
+        title:
+          type: string
+        abstract:
+          type: string
+        keywords:
+          type: array
+          items:
+            type: string
+        doi:
+          type: string
+          nullable: true
+        fileHash:
+          type: string
+        duplicate:
+          type: boolean
+      required: [title, abstract, keywords, fileHash, duplicate]
+    ReviewInput:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/ReviewDecision"
+        comments:
+          type: string
+          minLength: 1
+      required: [status, comments]
+    MyAnalytics:
+      type: object
+      properties:
+        totalViews:
+          type: integer
+        totalDownloads:
+          type: integer
+        totalBookmarks:
+          type: integer
+        papers:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              title:
+                type: string
+              views:
+                type: integer
+              downloads:
+                type: integer
+              bookmarks:
+                type: integer
+            required: [id, title, views, downloads, bookmarks]
+      required: [totalViews, totalDownloads, totalBookmarks, papers]
+    BookmarkState:
+      type: object
+      properties:
+        bookmarked:
+          type: boolean
+      required: [bookmarked]
+    Department:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        code:
+          type: string
+      required: [id, name, code]
+    DepartmentInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        code:
+          type: string
+          minLength: 2
+      required: [name, code]
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: "#/components/schemas/CategoryKind"
+        name:
+          type: string
+      required: [id, kind, name]
+    CategoryInput:
+      type: object
+      properties:
+        kind:
+          $ref: "#/components/schemas/CategoryKind"
+        name:
+          type: string
+          minLength: 1
+      required: [kind, name]
+    UserRoleInput:
+      type: object
+      properties:
+        role:
+          $ref: "#/components/schemas/UserRole"
+        departmentId:
+          type: [string, "null"]
+      required: [role]
+    AdminUser:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: [string, "null"]
+          format: email
+        role:
+          $ref: "#/components/schemas/UserRole"
+        departmentId:
+          type: [string, "null"]
+        departmentName:
+          type: [string, "null"]
+      required: [id, name, email, role, departmentId, departmentName]
+    AnalyticsGroup:
+      type: object
+      properties:
+        label:
+          type: string
+        count:
+          type: integer
+      required: [label, count]
+    AdminAnalytics:
+      type: object
+      properties:
+        totalPapers:
+          type: integer
+        totalUsers:
+          type: integer
+        departmentsCount:
+          type: integer
+        totalViewsDownloads:
+          type: integer
+        papersByDepartment:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyticsGroup"
+        papersByYear:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyticsGroup"
+        submissionsByStatus:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyticsGroup"
+        mostViewedPapers:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaperActivityMetric"
+        mostDownloadedPapers:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaperActivityMetric"
+      required: [totalPapers, totalUsers, departmentsCount, totalViewsDownloads, papersByDepartment, papersByYear, submissionsByStatus, mostViewedPapers, mostDownloadedPapers]
+    PaperActivityMetric:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        count:
+          type: integer
+      required: [id, title, count]
+    UploadUrlInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+          enum: [application/pdf]
+      required: [name, size, contentType]
+    UploadUrlResponse:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+        metadata:
+          type: object
+          properties:
+            name:
+              type: string
+            size:
+              type: integer
+            contentType:
+              type: string
+          required: [name, size, contentType]
+      required: [uploadURL, objectPath, metadata]
+    LoginUserBody:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        password: { type: string }
+    RegisterUserBody:
+      type: object
+      required: [email, password, firstName, lastName]
+      properties:
+        email: { type: string }
+        password: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+    CreateAdminUserInput:
+      type: object
+      required: [email, password, firstName, lastName, role]
+      properties:
+        email: { type: string }
+        password: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        role:
+          $ref: "#/components/schemas/UserRole"
+        departmentId:
+          type: [string, "null"]
