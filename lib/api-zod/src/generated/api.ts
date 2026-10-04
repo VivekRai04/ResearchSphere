@@ -138,6 +138,81 @@ export const GetMyProfileResponse = zod.object({
 
 
 /**
+ * @summary Update the signed-in user's profile
+ */
+export const UpdateProfileBody = zod.object({
+  "firstName": zod.string().optional(),
+  "lastName": zod.string().optional(),
+  "departmentId": zod.string().nullish()
+})
+
+export const UpdateProfileResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().email().nullable(),
+  "profileImageUrl": zod.string().nullable(),
+  "role": zod.enum(['STUDENT', 'REVIEWER', 'ADMIN']),
+  "departmentId": zod.string().nullable(),
+  "departmentName": zod.string().nullable()
+})
+
+
+/**
+ * @summary Get an author's public profile and papers
+ */
+export const GetAuthorProfileParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const GetAuthorProfileResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "departmentName": zod.string().nullish(),
+  "role": zod.enum(['STUDENT', 'REVIEWER', 'ADMIN']),
+  "totalViews": zod.number().int(),
+  "totalDownloads": zod.number().int(),
+  "totalBookmarks": zod.number().int(),
+  "paperCount": zod.number().int(),
+  "papers": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "abstract": zod.string(),
+  "year": zod.number().int(),
+  "departmentId": zod.string(),
+  "departmentName": zod.string(),
+  "researchArea": zod.string(),
+  "paperType": zod.string(),
+  "doi": zod.string().nullable(),
+  "objectPath": zod.string().nullable(),
+  "fileHash": zod.string().nullable(),
+  "keywords": zod.array(zod.string()),
+  "status": zod.enum(['PENDING_REVIEW', 'APPROVED', 'REJECTED', 'REVISION_REQUIRED']),
+  "uploadedById": zod.string(),
+  "authorName": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "versionNumber": zod.number().int(),
+  "latestReviewComment": zod.string().nullable(),
+  "versions": zod.array(zod.object({
+  "versionNumber": zod.number().int(),
+  "objectPath": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "comments": zod.array(zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "userName": zod.string(),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "citedByCount": zod.number().int(),
+  "readingTime": zod.number().int().nullish(),
+  "complexity": zod.string().nullish()
+}))
+})
+
+
+/**
  * @summary Search approved papers
  */
 export const listPapersQuerySemanticDefault = false;
@@ -181,7 +256,10 @@ export const ListPapersResponseItem = zod.object({
   "userName": zod.string(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
-}))
+})),
+  "citedByCount": zod.number().int(),
+  "readingTime": zod.number().int().nullish(),
+  "complexity": zod.string().nullish()
 })
 export const ListPapersResponse = zod.array(ListPapersResponseItem)
 
@@ -235,7 +313,10 @@ export const SubmitPaperResponse = zod.object({
   "userName": zod.string(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
-}))
+})),
+  "citedByCount": zod.number().int(),
+  "readingTime": zod.number().int().nullish(),
+  "complexity": zod.string().nullish()
 })
 
 
@@ -314,7 +395,10 @@ export const GetPaperResponse = zod.object({
   "userName": zod.string(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
-}))
+})),
+  "citedByCount": zod.number().int(),
+  "readingTime": zod.number().int().nullish(),
+  "complexity": zod.string().nullish()
 }),
   "related": zod.array(zod.object({
   "id": zod.string(),
@@ -346,7 +430,10 @@ export const GetPaperResponse = zod.object({
   "userName": zod.string(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
-}))
+})),
+  "citedByCount": zod.number().int(),
+  "readingTime": zod.number().int().nullish(),
+  "complexity": zod.string().nullish()
 }))
 })
 
@@ -409,7 +496,10 @@ export const SubmitPaperRevisionResponse = zod.object({
   "userName": zod.string(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
-}))
+})),
+  "citedByCount": zod.number().int(),
+  "readingTime": zod.number().int().nullish(),
+  "complexity": zod.string().nullish()
 })
 
 
@@ -457,7 +547,10 @@ export const AddPaperCommentResponse = zod.object({
   "userName": zod.string(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
-}))
+})),
+  "citedByCount": zod.number().int(),
+  "readingTime": zod.number().int().nullish(),
+  "complexity": zod.string().nullish()
 })
 
 
@@ -494,7 +587,10 @@ export const ListMySubmissionsResponseItem = zod.object({
   "userName": zod.string(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
-}))
+})),
+  "citedByCount": zod.number().int(),
+  "readingTime": zod.number().int().nullish(),
+  "complexity": zod.string().nullish()
 })
 export const ListMySubmissionsResponse = zod.array(ListMySubmissionsResponseItem)
 
@@ -532,7 +628,10 @@ export const ListMyBookmarksResponseItem = zod.object({
   "userName": zod.string(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
-}))
+})),
+  "citedByCount": zod.number().int(),
+  "readingTime": zod.number().int().nullish(),
+  "complexity": zod.string().nullish()
 })
 export const ListMyBookmarksResponse = zod.array(ListMyBookmarksResponseItem)
 
@@ -599,7 +698,10 @@ export const ListMyCollectionsResponseItem = zod.object({
   "userName": zod.string(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
-}))
+})),
+  "citedByCount": zod.number().int(),
+  "readingTime": zod.number().int().nullish(),
+  "complexity": zod.string().nullish()
 })).optional()
 })
 export const ListMyCollectionsResponse = zod.array(ListMyCollectionsResponseItem)
@@ -650,7 +752,10 @@ export const CreateCollectionResponse = zod.object({
   "userName": zod.string(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
-}))
+})),
+  "citedByCount": zod.number().int(),
+  "readingTime": zod.number().int().nullish(),
+  "complexity": zod.string().nullish()
 })).optional()
 })
 
@@ -720,7 +825,10 @@ export const ListReviewQueueResponseItem = zod.object({
   "userName": zod.string(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
-}))
+})),
+  "citedByCount": zod.number().int(),
+  "readingTime": zod.number().int().nullish(),
+  "complexity": zod.string().nullish()
 })
 export const ListReviewQueueResponse = zod.array(ListReviewQueueResponseItem)
 
@@ -770,7 +878,10 @@ export const ReviewPaperResponse = zod.object({
   "userName": zod.string(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
-}))
+})),
+  "citedByCount": zod.number().int(),
+  "readingTime": zod.number().int().nullish(),
+  "complexity": zod.string().nullish()
 })
 
 
@@ -816,6 +927,12 @@ export const GetAdminAnalyticsResponse = zod.object({
   "count": zod.number().int()
 }))
 })
+
+
+/**
+ * @summary Export repository analytics as CSV
+ */
+export const ExportAdminAnalyticsResponse = zod.unknown()
 
 
 /**

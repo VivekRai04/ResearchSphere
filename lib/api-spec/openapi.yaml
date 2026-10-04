@@ -158,6 +158,45 @@ paths:
                 $ref: "#/components/schemas/UserProfile"
         "401":
           $ref: "#/components/responses/Unauthorized"
+    patch:
+      operationId: updateProfile
+      tags: [Auth]
+      summary: Update the signed-in user's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileBody"
+      responses:
+        "200":
+          description: Profile updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /authors/{userId}:
+    get:
+      operationId: getAuthorProfile
+      tags: [Papers]
+      summary: Get an author's public profile and papers
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Author profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthorProfile"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /papers:
     get:
       operationId: listPapers
@@ -579,6 +618,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdminAnalytics"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/analytics/export:
+    get:
+      operationId: exportAdminAnalytics
+      tags: [Administration]
+      summary: Export repository analytics as CSV
+      responses:
+        "200":
+          description: CSV file download.
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1065,6 +1121,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PaperComment"
+        citedByCount:
+          type: integer
+        readingTime:
+          type: [integer, "null"]
+        complexity:
+          type: [string, "null"]
       required:
         - id
         - title
@@ -1086,6 +1148,7 @@ components:
         - latestReviewComment
         - versions
         - comments
+        - citedByCount
     PaperVersion:
       type: object
       properties:
@@ -1434,3 +1497,26 @@ components:
           $ref: "#/components/schemas/UserRole"
         departmentId:
           type: [string, "null"]
+    AuthorProfile:
+      type: object
+      required: [id, name, role, totalViews, totalDownloads, totalBookmarks, paperCount, papers]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: ["string", "null"] }
+        departmentName: { type: ["string", "null"] }
+        role: { $ref: "#/components/schemas/UserRole" }
+        totalViews: { type: integer }
+        totalDownloads: { type: integer }
+        totalBookmarks: { type: integer }
+        paperCount: { type: integer }
+        papers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Paper"
+    UpdateProfileBody:
+      type: object
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        departmentId: { type: ["string", "null"] }

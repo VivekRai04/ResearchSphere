@@ -1,0 +1,33 @@
+services:
+  # API Server (Node.js)
+  - type: web
+    name: researchsphere-api
+    env: node
+    plan: free
+    buildCommand: pnpm install && pnpm --filter @workspace/api-server run build
+    startCommand: pnpm --filter @workspace/api-server run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false # You will need to provide this from Neon.tech
+      - key: FRONTEND_URL
+        value: https://researchsphere-web.onrender.com
+
+  # Frontend Web App (Vite React)
+  - type: web
+    name: researchsphere-web
+    env: static
+    plan: free
+    buildCommand: pnpm install && pnpm --filter @workspace/research-sphere run build
+    staticPublishPath: artifacts/research-sphere/dist
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: researchsphere-api
+          envVarKey: RENDER_EXTERNAL_URL

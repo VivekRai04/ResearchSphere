@@ -34,4 +34,9 @@ export interface Paper {
   latestReviewComment: string | null;
   versions: PaperVersion[];
   comments: PaperComment[];
+  citedByCount: number;
+  /** @nullable */
+  readingTime?: number | null;
+  /** @nullable */
+  complexity?: string | null;
 }

@@ -122,6 +122,8 @@ export const papersTable = pgTable(
       .notNull()
       .default(sql`'[]'::jsonb`),
     status: paperStatusEnum("status").notNull().default("PENDING_REVIEW"),
+    readingTime: integer("reading_time"),
+    complexity: varchar("complexity"),
     uploadedById: varchar("uploaded_by_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "restrict" }),
@@ -282,7 +284,25 @@ export const paperCommentsTable = pgTable(
   (table) => [index("researchsphere_comments_paper_idx").on(table.paperId)],
 );
 
-
+export const paperCitationsTable = pgTable(
+  "researchsphere_paper_citations",
+  {
+    id: varchar("id").primaryKey(),
+    citingPaperId: varchar("citing_paper_id")
+      .notNull()
+      .references(() => papersTable.id, { onDelete: "cascade" }),
+    citedPaperId: varchar("cited_paper_id")
+      .references(() => papersTable.id, { onDelete: "set null" }),
+    rawReferenceText: text("raw_reference_text").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("researchsphere_citations_citing_idx").on(table.citingPaperId),
+    index("researchsphere_citations_cited_idx").on(table.citedPaperId),
+  ],
+);
 
 
 

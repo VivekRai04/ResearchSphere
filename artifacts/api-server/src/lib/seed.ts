@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   db,
   categoriesTable,
@@ -12,7 +12,7 @@ import {
 import { newId } from "./researchsphere";
 import { embedQuery } from "./ai";
 
-const departments = [
+await db.execute(sql`CREATE TABLE IF NOT EXISTS researchsphere_paper_citations (id VARCHAR(255) PRIMARY KEY, citing_paper_id VARCHAR(255) NOT NULL REFERENCES researchsphere_papers(id) ON DELETE CASCADE, cited_paper_id VARCHAR(255) REFERENCES researchsphere_papers(id) ON DELETE SET NULL, raw_reference_text TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`); const departments = [
   { id: "computer-science", name: "Computer Science", code: "CS" },
   { id: "electrical-engineering", name: "Electrical Engineering", code: "EE" },
   { id: "data-science", name: "Data Science", code: "DS" },
@@ -124,6 +124,8 @@ export async function seedResearchSphere(): Promise<void> {
         fileHash: null,
         status: "APPROVED",
         uploadedById: seed.authorId,
+        readingTime: Math.max(1, Math.ceil((seed.abstract.split(/\s+/).length * 25) / 200)),
+        complexity: "Advanced",
       });
       const versionId = newId();
       await tx.insert(paperVersionsTable).values({

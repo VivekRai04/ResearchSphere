@@ -141,6 +141,11 @@ export interface Paper {
   latestReviewComment: string | null;
   versions: PaperVersion[];
   comments: PaperComment[];
+  citedByCount: number;
+  /** @nullable */
+  readingTime?: number | null;
+  /** @nullable */
+  complexity?: string | null;
 }
 
 export interface CommentInput {
@@ -340,6 +345,28 @@ export interface CreateAdminUserInput {
   firstName: string;
   lastName: string;
   role: UserRole;
+  /** @nullable */
+  departmentId?: string | null;
+}
+
+export interface AuthorProfile {
+  id: string;
+  name: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  departmentName?: string | null;
+  role: UserRole;
+  totalViews: number;
+  totalDownloads: number;
+  totalBookmarks: number;
+  paperCount: number;
+  papers: Paper[];
+}
+
+export interface UpdateProfileBody {
+  firstName?: string;
+  lastName?: string;
   /** @nullable */
   departmentId?: string | null;
 }

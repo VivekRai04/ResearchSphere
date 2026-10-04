@@ -23,6 +23,7 @@ import type {
   AdminAnalytics,
   AdminUser,
   AuthUserEnvelope,
+  AuthorProfile,
   BadRequestResponse,
   BookmarkState,
   Category,
@@ -55,6 +56,7 @@ import type {
   ReviewInput,
   ServerErrorResponse,
   UnauthorizedResponse,
+  UpdateProfileBody,
   UploadUrlInput,
   UploadUrlResponse,
   UserProfile,
@@ -729,6 +731,171 @@ export function useGetMyProfile<TData = Awaited<ReturnType<typeof getMyProfile>>
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetMyProfileQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateProfileUrl = () => {
+
+
+
+
+  return `/api/me/profile`
+}
+
+/**
+ * @summary Update the signed-in user's profile
+ */
+export const updateProfile = async (updateProfileBody: UpdateProfileBody, options?: Parameters<typeof customFetch>[1]): Promise<UserProfile> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<UserProfile>(getUpdateProfileUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateProfileBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateProfileMutationKey = () => ['updateProfile'] as const;
+
+export const getUpdateProfileMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfile>>, TError,UpdateProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateProfile>>, TError,UpdateProfileMutationVariables, TContext> => {
+
+const mutationKey = getUpdateProfileMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateProfile>>, UpdateProfileMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateProfile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateProfile>>>
+    export type UpdateProfileMutationBody = BodyType<UpdateProfileBody>
+    export type UpdateProfileMutationError = ErrorType<UnauthorizedResponse>
+    export type UpdateProfileMutationVariables = {data: BodyType<UpdateProfileBody>}
+
+    /**
+ * @summary Update the signed-in user's profile
+ */
+export const useUpdateProfile = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfile>>, TError,UpdateProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateProfile>>,
+        TError,
+        UpdateProfileMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateProfileMutationOptions(options));
+    }
+
+export const getGetAuthorProfileUrl = (userId: string,) => {
+
+
+
+
+  return `/api/authors/${userId}`
+}
+
+/**
+ * @summary Get an author's public profile and papers
+ */
+export const getAuthorProfile = async (userId: string, options?: Parameters<typeof customFetch>[1]): Promise<AuthorProfile> => {
+
+  return customFetch<AuthorProfile>(getGetAuthorProfileUrl(userId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAuthorProfileQueryKey = (userId: string,) => {
+    return [
+    `/api/authors/${userId}`
+    ] as const;
+    }
+
+
+export const getGetAuthorProfileQueryOptions = <TData = Awaited<ReturnType<typeof getAuthorProfile>>, TError = ErrorType<NotFoundResponse>>(userId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAuthorProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAuthorProfileQueryKey(userId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAuthorProfile>>> = ({ signal }) => getAuthorProfile(userId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: userId !== null && userId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAuthorProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAuthorProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getAuthorProfile>>>
+export type GetAuthorProfileQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get an author's public profile and papers
+ */
+
+export function useGetAuthorProfile<TData = Awaited<ReturnType<typeof getAuthorProfile>>, TError = ErrorType<NotFoundResponse>>(
+ userId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAuthorProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAuthorProfileQueryOptions(userId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -2411,6 +2578,83 @@ export function useGetAdminAnalytics<TData = Awaited<ReturnType<typeof getAdminA
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetAdminAnalyticsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExportAdminAnalyticsUrl = () => {
+
+
+
+
+  return `/api/admin/analytics/export`
+}
+
+/**
+ * @summary Export repository analytics as CSV
+ */
+export const exportAdminAnalytics = async ( options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getExportAdminAnalyticsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportAdminAnalyticsQueryKey = () => {
+    return [
+    `/api/admin/analytics/export`
+    ] as const;
+    }
+
+
+export const getExportAdminAnalyticsQueryOptions = <TData = Awaited<ReturnType<typeof exportAdminAnalytics>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportAdminAnalytics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportAdminAnalyticsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportAdminAnalytics>>> = ({ signal }) => exportAdminAnalytics({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportAdminAnalytics>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportAdminAnalyticsQueryResult = NonNullable<Awaited<ReturnType<typeof exportAdminAnalytics>>>
+export type ExportAdminAnalyticsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Export repository analytics as CSV
+ */
+
+export function useExportAdminAnalytics<TData = Awaited<ReturnType<typeof exportAdminAnalytics>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportAdminAnalytics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportAdminAnalyticsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -34,8 +34,10 @@ import {
   reviewsTable,
   uploadsTable,
   usersTable,
+  userProfilesTable,
   collectionsTable,
   collectionBookmarksTable,
+  paperCitationsTable,
 } from "@workspace/db";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { ObjectStorageService } from "../lib/objectStorage";
@@ -128,6 +130,11 @@ async function serializePaper(row: PaperWithNames) {
     createdAt: c.createdAt.toISOString(),
   }));
 
+  const [{ count: citedByCount }] = await db
+    .select({ count: sql<number>`cast(count(${paperCitationsTable.id}) as integer)` })
+    .from(paperCitationsTable)
+    .where(eq(paperCitationsTable.citedPaperId, row.paper.id));
+
   return {
     id: row.paper.id,
     title: row.paper.title,
@@ -149,6 +156,9 @@ async function serializePaper(row: PaperWithNames) {
     versions,
     comments,
     latestReviewComment: review?.comments ?? null,
+    citedByCount,
+    readingTime: row.paper.readingTime,
+    complexity: row.paper.complexity,
   };
 }
 
@@ -248,12 +258,31 @@ async function extractMetadata(bytes: Buffer, fileName: string) {
   const doiMatch = text.match(/\b(10\.\d{4,9}\/[-._;()/:a-zA-Z0-9]+)\b/);
   const doi = doiMatch ? doiMatch[1] : null;
 
+  // Extract references
+  const references: string[] = [];
+  const refIndex = text.lastIndexOf("References");
+  if (refIndex > 0) {
+    const refsText = text.slice(refIndex + "References".length).trim();
+    // basic splitting for numbering like "[1]", "[2]" or "1.", "2."
+    const rawRefs = refsText.split(/(?:\[\d+\]|\n\s*\d+\.\s+)/).filter(r => r.length > 20).map(r => r.trim());
+    references.push(...rawRefs.slice(0, 30)); // limit to 30
+  }
+
+  // Calculate reading time and complexity
+  const words = normalized.split(/\s+/);
+  const readingTime = Math.max(1, Math.ceil(words.length / 200));
+  const avgWordLength = words.reduce((acc, w) => acc + w.length, 0) / (words.length || 1);
+  const complexity = avgWordLength > 6.5 ? "Advanced" : avgWordLength > 5.5 ? "Intermediate" : "Beginner";
+
   return {
     title,
     abstract: abstract || normalized.slice(0, 1200),
     keywords,
     doi,
     fileHash: createHash("sha256").update(bytes).digest("hex"),
+    references,
+    readingTime,
+    complexity,
   };
 }
 
@@ -495,6 +524,42 @@ router.post("/papers", async (req: Request, res: Response) => {
   // Asynchronously process AI embeddings
   const { processPaperEmbedding } = await import("../lib/ai.js");
   processPaperEmbedding(versionId, values.objectPath).catch(console.error);
+
+  // Asynchronously extract and save citations
+  (async () => {
+    try {
+      const metadata = await extractMetadata(upload.bytes, upload.upload.fileName);
+      
+      // Update reading time and complexity
+      await db.update(papersTable).set({
+        readingTime: metadata.readingTime,
+        complexity: metadata.complexity
+      }).where(eq(papersTable.id, id));
+
+      if (metadata.references?.length) {
+        const insertPromises = metadata.references.map(async (ref) => {
+          // Attempt to link citation if we find a paper with matching title
+          let citedPaperId = null;
+          // Very basic fuzzy matching using text search or exact match
+          const [match] = await db.select({ id: papersTable.id })
+            .from(papersTable)
+            .where(sql`LOWER(${papersTable.title}) = LOWER(${ref.split('.').slice(-2)[0]?.trim() || ''})`)
+            .limit(1);
+          if (match) { citedPaperId = match.id; }
+          
+          await db.insert(paperCitationsTable).values({
+            id: newId(),
+            citingPaperId: id,
+            citedPaperId,
+            rawReferenceText: ref
+          });
+        });
+        await Promise.allSettled(insertPromises);
+      }
+    } catch (e) {
+      req.log.warn({ err: e }, "Could not extract citations");
+    }
+  })();
 
   const response = await getPaper(paper.id);
   res.status(201).json(SubmitPaperResponse.parse(response));
@@ -919,6 +984,134 @@ router.delete("/me/collections/:collectionId/papers/:paperId", async (req: Reque
     await db.delete(collectionBookmarksTable).where(and(eq(collectionBookmarksTable.collectionId, collectionId), eq(collectionBookmarksTable.bookmarkId, bookmark.id)));
   }
   res.status(200).json({});
+});
+
+// ── Feature 1: Author Profiles ──
+router.get("/authors/:userId", async (req: Request, res: Response) => {
+  const userId = routeParam(req, "userId");
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) { res.status(404).json({ error: "Author not found" }); return; }
+
+  const [profile] = await db.select().from(userProfilesTable)
+    .where(eq(userProfilesTable.userId, userId)).limit(1);
+
+  let departmentName: string | null = null;
+  if (profile?.departmentId) {
+    const [dept] = await db.select({ name: departmentsTable.name }).from(departmentsTable)
+      .where(eq(departmentsTable.id, profile.departmentId)).limit(1);
+    departmentName = dept?.name ?? null;
+  }
+
+  const rows = await loadPaperRows(and(eq(papersTable.uploadedById, userId), eq(papersTable.status, "APPROVED")));
+  const papers = await Promise.all(rows.map(row => serializePaper(row as PaperWithNames)));
+  const paperIds = papers.map(p => p.id);
+
+  let totalViews = 0, totalDownloads = 0, totalBookmarks = 0;
+  if (paperIds.length) {
+    const views = await db.select({ count: sql<number>`cast(count(${paperActivityTable.id}) as integer)` })
+      .from(paperActivityTable).where(and(eq(paperActivityTable.kind, "VIEW"), inArray(paperActivityTable.paperId, paperIds)));
+    const downloads = await db.select({ count: sql<number>`cast(count(${paperActivityTable.id}) as integer)` })
+      .from(paperActivityTable).where(and(eq(paperActivityTable.kind, "DOWNLOAD"), inArray(paperActivityTable.paperId, paperIds)));
+    const bookmarkCount = await db.select({ count: sql<number>`cast(count(${bookmarksTable.id}) as integer)` })
+      .from(bookmarksTable).where(inArray(bookmarksTable.paperId, paperIds));
+    totalViews = views[0]?.count ?? 0;
+    totalDownloads = downloads[0]?.count ?? 0;
+    totalBookmarks = bookmarkCount[0]?.count ?? 0;
+  }
+
+  res.json({
+    id: user.id,
+    name: displayName(user.firstName, user.lastName, user.email),
+    email: user.email,
+    departmentName,
+    role: profile?.role ?? "STUDENT",
+    totalViews,
+    totalDownloads,
+    totalBookmarks,
+    paperCount: papers.length,
+    papers,
+  });
+});
+
+// ── Feature 2: User Profile Management ──
+router.patch("/me/profile", async (req: Request, res: Response) => {
+  if (!isSignedIn(req, res)) return;
+  const { firstName, lastName, departmentId } = req.body ?? {};
+  if (firstName !== undefined || lastName !== undefined) {
+    const updates: Record<string, unknown> = {};
+    if (typeof firstName === "string") updates.firstName = firstName.trim();
+    if (typeof lastName === "string") updates.lastName = lastName.trim();
+    if (Object.keys(updates).length) {
+      await db.update(usersTable).set(updates as any).where(eq(usersTable.id, req.user.id));
+    }
+  }
+  if (departmentId !== undefined) {
+    await db.update(userProfilesTable).set({ departmentId: departmentId || null })
+      .where(eq(userProfilesTable.userId, req.user.id));
+  }
+  const profile = await getCurrentProfile(req);
+  res.json(profile);
+});
+
+// ── Feature 3: Admin CSV Export ──
+router.get("/admin/analytics/export", async (req: Request, res: Response) => {
+  const profile = await requireRole(req, res, ["ADMIN"]);
+  if (!profile) return;
+
+  const rows = await db.select({
+    id: papersTable.id,
+    title: papersTable.title,
+    year: papersTable.year,
+    researchArea: papersTable.researchArea,
+    paperType: papersTable.paperType,
+    status: papersTable.status,
+    departmentName: departmentsTable.name,
+    authorFirstName: usersTable.firstName,
+    authorLastName: usersTable.lastName,
+    authorEmail: usersTable.email,
+    createdAt: papersTable.createdAt,
+  })
+    .from(papersTable)
+    .innerJoin(departmentsTable, eq(departmentsTable.id, papersTable.departmentId))
+    .innerJoin(usersTable, eq(usersTable.id, papersTable.uploadedById))
+    .orderBy(desc(papersTable.createdAt));
+
+  const paperIds = rows.map(r => r.id);
+  const viewMap = new Map<string, number>();
+  const downloadMap = new Map<string, number>();
+  const bookmarkMap = new Map<string, number>();
+
+  if (paperIds.length) {
+    const views = await db.select({ paperId: paperActivityTable.paperId, count: sql<number>`cast(count(${paperActivityTable.id}) as integer)` })
+      .from(paperActivityTable).where(and(eq(paperActivityTable.kind, "VIEW"), inArray(paperActivityTable.paperId, paperIds))).groupBy(paperActivityTable.paperId);
+    const downloads = await db.select({ paperId: paperActivityTable.paperId, count: sql<number>`cast(count(${paperActivityTable.id}) as integer)` })
+      .from(paperActivityTable).where(and(eq(paperActivityTable.kind, "DOWNLOAD"), inArray(paperActivityTable.paperId, paperIds))).groupBy(paperActivityTable.paperId);
+    const bookmarks = await db.select({ paperId: bookmarksTable.paperId, count: sql<number>`cast(count(${bookmarksTable.id}) as integer)` })
+      .from(bookmarksTable).where(inArray(bookmarksTable.paperId, paperIds)).groupBy(bookmarksTable.paperId);
+    views.forEach(v => viewMap.set(v.paperId, v.count));
+    downloads.forEach(d => downloadMap.set(d.paperId, d.count));
+    bookmarks.forEach(b => bookmarkMap.set(b.paperId, b.count));
+  }
+
+  const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+  const header = "Title,Author,Department,Year,Research Area,Paper Type,Status,Views,Downloads,Bookmarks,Submitted";
+  const csvRows = rows.map(r => [
+    escape(r.title),
+    escape(displayName(r.authorFirstName, r.authorLastName, r.authorEmail)),
+    escape(r.departmentName),
+    r.year,
+    escape(r.researchArea),
+    escape(r.paperType),
+    r.status,
+    viewMap.get(r.id) ?? 0,
+    downloadMap.get(r.id) ?? 0,
+    bookmarkMap.get(r.id) ?? 0,
+    r.createdAt.toISOString().split("T")[0],
+  ].join(","));
+
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="researchsphere-report-${new Date().toISOString().split("T")[0]}.csv"`);
+  res.send([header, ...csvRows].join("\n"));
 });
 
 export default router;
