@@ -16,25 +16,27 @@
 
 ## 📖 What is ResearchSphere?
 
-ResearchSphere is a premium, open-source platform designed to redefine how academics, students, and institutions store and interact with research papers. It moves beyond clunky, outdated PDF repositories by automatically parsing documents, calculating reading times, extracting metadata, and allowing users to *literally chat* with the research using cutting-edge Generative AI.
+ResearchSphere is a premium, open-source platform designed to redefine how academics, students, and institutions store, share, and interact with research papers. It moves beyond clunky, outdated PDF repositories by automatically parsing documents, calculating reading times, extracting complex metadata, and fostering continuous peer collaboration through integrated discussion forums.
 
 ## ❓ Why did we build it?
 
-Research discovery shouldn't feel like navigating an archive from the 1990s. We built ResearchSphere to solve three core problems:
-1. **Friction in sharing:** Beautifully formatted "citation cards" make sharing research on social media seamless and aesthetically stunning.
-2. **Time sinks:** Automatically estimating reading times, extracting abstracts, and parsing complexity levels help researchers decide what's worth reading instantly.
-3. **Information density:** By integrating Google Gemini, users can ask a paper questions directly instead of Ctrl+F-ing through 50 pages of dense academic jargon.
+Research discovery shouldn't feel like navigating an archive from the 1990s. We built ResearchSphere to solve three core problems in modern academia:
+1. **Friction in sharing:** Beautifully formatted "citation cards" make sharing research on social media or with colleagues seamless and aesthetically stunning.
+2. **Time sinks:** Automatically estimating reading times, extracting abstracts, and parsing complexity levels help researchers and students decide what's worth reading instantly.
+3. **Academic Silos:** We are replacing static PDFs with dynamic discussion forums attached directly to every paper, fostering continuous peer review, Q&A, and collaborative scholarly discourse.
 
 ---
 
 ## ✨ Features
 
-- 🎨 **State-of-the-Art Interface:** A gorgeous, glassmorphic minimalist UI built with React 19, Tailwind v4, and subtle Framer Motion micro-interactions.
-- 🧠 **AI-Powered Metadata:** Upload a raw PDF and ResearchSphere automatically extracts the abstract, keywords, references, and accurately estimates reading time and complexity based on both text density and physical page count.
-- 💬 **Chat with Papers:** Integrated Python AI service using Google Gemini allows you to ask deep, contextual questions about any uploaded document.
-- 📸 **Share as Card:** Instantly generate and download highly aesthetic, pixel-perfect citation cards for sharing papers on Twitter, LinkedIn, or personal blogs.
-- 🚀 **Lightning Fast:** Powered by Fastify and Vite for instantaneous hot-reloading and microsecond API responses.
-- 🔐 **Authentication & Bookmarks:** Full user accounts, personal libraries, and save-for-later functionality.
+- 🎨 **State-of-the-Art Interface:** A gorgeous, minimalist UI built with React 19, Tailwind v4, and subtle Framer Motion micro-interactions that feel incredibly premium.
+- 💬 **Dynamic Academic Discourse:** A built-in discussion forum beneath every paper enables continuous peer review, Q&A, and collaborative debate, bringing static research to life.
+- ⏱️ **NLP Complexity & Time Estimation:** Upload a raw PDF and our engine automatically calculates precise reading times and complexity tiers (Beginner, Intermediate, Advanced) based on advanced text density and word-length heuristics.
+- 🔍 **Semantic AI Discovery:** Under the hood, papers are processed into vector embeddings by our Python AI Service, enabling intelligent relationships and related-research recommendations.
+- 📑 **Smart Metadata Extraction:** Automatically extracts references, DOIs, keywords, and abstracts directly from the raw PDF binary.
+- 📸 **Share as Card:** Instantly generate and download highly aesthetic, pixel-perfect citation cards for sharing papers on Twitter, LinkedIn, or academic blogs.
+- 🏛 **Institutional Organization:** Papers are meticulously categorized by department, research area, and paper type, creating a structured, highly navigable scholarly commons.
+- 🔐 **Authentication & Personal Libraries:** Full user accounts, bookmarking, and save-for-later functionality for curating personal research collections.
 
 ---
 
