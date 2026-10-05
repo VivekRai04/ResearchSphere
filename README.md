@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://img.icons8.com/ios-filled/100/0f172a/flask.png" alt="ResearchSphere Logo" width="80" />
+  <img src="https://img.icons8.com/ios-filled/100/0f172a/flask.png" alt="ResearchSphere Logo" width="50" />
   <h1 align="center">ResearchSphere</h1>
   <p align="center">
     <strong>A modern, AI-powered scholarly commons for the next generation of researchers.</strong>
