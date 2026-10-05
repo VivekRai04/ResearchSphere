@@ -182,7 +182,10 @@ async function readUploadedPdf(userId: string, objectPath: string) {
 async function extractMetadata(bytes: Buffer, fileName: string) {
   const parser = new PDFParse({ data: bytes });
   let text = "";
+  let numPages = 1;
   try {
+    const doc = await (parser as any).load();
+    numPages = doc.numPages || 1;
     text = (await parser.getText()).text;
   } finally {
     await parser.destroy();
@@ -270,7 +273,14 @@ async function extractMetadata(bytes: Buffer, fileName: string) {
 
   // Calculate reading time and complexity
   const words = normalized.split(/\s+/);
-  const readingTime = Math.max(1, Math.ceil(words.length / 200));
+  let readingTime = Math.ceil(words.length / 200);
+  
+  // Fallback for scanned or image-heavy PDFs: assume ~2 mins per page if text density is low
+  if (words.length / numPages < 100) {
+    readingTime = Math.max(readingTime, numPages * 2);
+  }
+  readingTime = Math.max(1, readingTime);
+  
   const avgWordLength = words.reduce((acc, w) => acc + w.length, 0) / (words.length || 1);
   const complexity = avgWordLength > 6.5 ? "Advanced" : avgWordLength > 5.5 ? "Intermediate" : "Beginner";
 
