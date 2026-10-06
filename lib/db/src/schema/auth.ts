@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { index, jsonb, pgTable, timestamp, varchar } from 'drizzle-orm/pg-core';
+import { index, jsonb, pgTable, timestamp, varchar, boolean } from 'drizzle-orm/pg-core';
 
 export const sessionsTable = pgTable(
   'sessions',
@@ -20,6 +20,7 @@ export const usersTable = pgTable('users', {
   lastName: varchar('last_name'),
   passwordHash: varchar('password_hash'),
   profileImageUrl: varchar('profile_image_url'),
+  isSuspended: boolean('is_suspended').default(false).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

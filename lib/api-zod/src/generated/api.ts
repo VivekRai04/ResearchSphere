@@ -207,7 +207,8 @@ export const GetAuthorProfileResponse = zod.object({
 })),
   "citedByCount": zod.number().int(),
   "readingTime": zod.number().int().nullish(),
-  "complexity": zod.string().nullish()
+  "complexity": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish()
 }))
 })
 
@@ -259,7 +260,8 @@ export const ListPapersResponseItem = zod.object({
 })),
   "citedByCount": zod.number().int(),
   "readingTime": zod.number().int().nullish(),
-  "complexity": zod.string().nullish()
+  "complexity": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish()
 })
 export const ListPapersResponse = zod.array(ListPapersResponseItem)
 
@@ -316,7 +318,8 @@ export const SubmitPaperResponse = zod.object({
 })),
   "citedByCount": zod.number().int(),
   "readingTime": zod.number().int().nullish(),
-  "complexity": zod.string().nullish()
+  "complexity": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish()
 })
 
 
@@ -398,7 +401,8 @@ export const GetPaperResponse = zod.object({
 })),
   "citedByCount": zod.number().int(),
   "readingTime": zod.number().int().nullish(),
-  "complexity": zod.string().nullish()
+  "complexity": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish()
 }),
   "related": zod.array(zod.object({
   "id": zod.string(),
@@ -433,7 +437,8 @@ export const GetPaperResponse = zod.object({
 })),
   "citedByCount": zod.number().int(),
   "readingTime": zod.number().int().nullish(),
-  "complexity": zod.string().nullish()
+  "complexity": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish()
 }))
 })
 
@@ -499,7 +504,8 @@ export const SubmitPaperRevisionResponse = zod.object({
 })),
   "citedByCount": zod.number().int(),
   "readingTime": zod.number().int().nullish(),
-  "complexity": zod.string().nullish()
+  "complexity": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish()
 })
 
 
@@ -550,7 +556,8 @@ export const AddPaperCommentResponse = zod.object({
 })),
   "citedByCount": zod.number().int(),
   "readingTime": zod.number().int().nullish(),
-  "complexity": zod.string().nullish()
+  "complexity": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish()
 })
 
 
@@ -590,7 +597,8 @@ export const ListMySubmissionsResponseItem = zod.object({
 })),
   "citedByCount": zod.number().int(),
   "readingTime": zod.number().int().nullish(),
-  "complexity": zod.string().nullish()
+  "complexity": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish()
 })
 export const ListMySubmissionsResponse = zod.array(ListMySubmissionsResponseItem)
 
@@ -631,7 +639,8 @@ export const ListMyBookmarksResponseItem = zod.object({
 })),
   "citedByCount": zod.number().int(),
   "readingTime": zod.number().int().nullish(),
-  "complexity": zod.string().nullish()
+  "complexity": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish()
 })
 export const ListMyBookmarksResponse = zod.array(ListMyBookmarksResponseItem)
 
@@ -701,7 +710,8 @@ export const ListMyCollectionsResponseItem = zod.object({
 })),
   "citedByCount": zod.number().int(),
   "readingTime": zod.number().int().nullish(),
-  "complexity": zod.string().nullish()
+  "complexity": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish()
 })).optional()
 })
 export const ListMyCollectionsResponse = zod.array(ListMyCollectionsResponseItem)
@@ -755,7 +765,8 @@ export const CreateCollectionResponse = zod.object({
 })),
   "citedByCount": zod.number().int(),
   "readingTime": zod.number().int().nullish(),
-  "complexity": zod.string().nullish()
+  "complexity": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish()
 })).optional()
 })
 
@@ -828,7 +839,8 @@ export const ListReviewQueueResponseItem = zod.object({
 })),
   "citedByCount": zod.number().int(),
   "readingTime": zod.number().int().nullish(),
-  "complexity": zod.string().nullish()
+  "complexity": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish()
 })
 export const ListReviewQueueResponse = zod.array(ListReviewQueueResponseItem)
 
@@ -881,7 +893,8 @@ export const ReviewPaperResponse = zod.object({
 })),
   "citedByCount": zod.number().int(),
   "readingTime": zod.number().int().nullish(),
-  "complexity": zod.string().nullish()
+  "complexity": zod.string().nullish(),
+  "rejectionReason": zod.string().nullish()
 })
 
 

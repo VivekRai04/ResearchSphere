@@ -27,8 +27,11 @@ import {
   paperActivityTable,
   userProfilesTable,
   usersTable,
+  paperCommentsTable,
 } from "@workspace/db";
 import { Router, type IRouter, type Request, type Response } from "express";
+import fs from "fs/promises";
+import path from "path";
 import { displayName, ensureResearchProfile } from "../lib/researchsphere";
 
 const router: IRouter = Router();
@@ -284,6 +287,7 @@ router.get("/admin/users", async (req: Request, res: Response) => {
     role: profile.role,
     departmentId: profile.departmentId,
     departmentName,
+    isSuspended: user.isSuspended,
   }))));
 });
 
@@ -403,6 +407,89 @@ router.post("/admin/users", async (req: Request, res: Response) => {
     departmentId: profile.departmentId,
     departmentName,
   }));
+});
+
+router.post("/admin/papers/:paperId/remove", async (req: Request, res: Response) => {
+  if (!await requireAdmin(req, res)) return;
+  const paperId = routeParam(req, "paperId");
+  const { reason } = req.body || {};
+
+  try {
+    const [paper] = await db.select({ objectPath: papersTable.objectPath }).from(papersTable).where(eq(papersTable.id, paperId));
+    
+    if (!paper) {
+      res.status(404).json({ error: "Paper not found" });
+      return;
+    }
+
+    await db.update(papersTable).set({ 
+      status: "REJECTED", 
+      rejectionReason: reason || "Removed by administrator"
+    }).where(eq(papersTable.id, paperId));
+
+    if (paper.objectPath) {
+      try {
+        await fs.unlink(path.resolve(process.cwd(), 'uploads', paper.objectPath));
+        // Remove the object path so it doesn't try to serve a deleted file
+        await db.update(papersTable).set({ objectPath: null }).where(eq(papersTable.id, paperId));
+      } catch (e) {
+        console.error("Failed to delete file from disk:", e);
+      }
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to remove paper" });
+  }
+});
+
+router.delete("/admin/papers/:paperId/comments/:commentId", async (req: Request, res: Response) => {
+  if (!await requireAdmin(req, res)) return;
+  const commentId = routeParam(req, "commentId");
+  
+  try {
+    const deleted = await db.delete(paperCommentsTable).where(eq(paperCommentsTable.id, commentId)).returning();
+    if (!deleted.length) {
+      res.status(404).json({ error: "Comment not found" });
+      return;
+    }
+    res.status(204).end();
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete comment" });
+  }
+});
+
+router.post("/admin/users/:userId/suspend", async (req: Request, res: Response) => {
+  if (!await requireAdmin(req, res)) return;
+  const userId = routeParam(req, "userId");
+
+  try {
+    const [user] = await db.update(usersTable).set({ isSuspended: true }).where(eq(usersTable.id, userId)).returning();
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    res.json({ success: true, isSuspended: user.isSuspended });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to suspend user" });
+  }
+});
+
+router.post("/admin/users/:userId/unsuspend", async (req: Request, res: Response) => {
+  if (!await requireAdmin(req, res)) return;
+  const userId = routeParam(req, "userId");
+
+  try {
+    const [user] = await db.update(usersTable).set({ isSuspended: false }).where(eq(usersTable.id, userId)).returning();
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    res.json({ success: true, isSuspended: user.isSuspended });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to unsuspend user" });
+  }
 });
 
 export default router;

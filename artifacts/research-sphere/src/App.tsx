@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useAuth } from '@workspace/auth-web';
 import { Command } from 'cmdk';
+import { toast } from 'sonner';
 import {
   useAddBookmark, useCreateAdminUser, useCreateCategory, useCreateDepartment, useDeleteCategory,
   useDeleteDepartment, useGetAdminAnalytics, useGetMyProfile, useGetPaper,
@@ -26,7 +27,7 @@ import {
   LayoutDashboard, Library, LogOut, Menu, Search, Settings2, ShieldCheck,
   SlidersHorizontal, Sparkles, Upload, Users, X, BookOpen, Plus, Pencil,
   Trash2, Clock3, Copy, SearchX, LoaderCircle, CheckCircle2, Eye, BarChart3,
-  MessageSquare, Send, FolderPlus, Folder, PlusCircle, CheckSquare, Square, Brain, Link2
+  MessageSquare, Send, FolderPlus, Folder, PlusCircle, CheckSquare, Square, Brain, Link2, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { Link, Route, Switch, useLocation, useParams } from 'wouter';
 import NotFound from '@/pages/not-found';
@@ -70,6 +71,7 @@ function Shell({ children }: { children: ReactNode }) {
   const { data: profile, isLoading: profileLoading } = useGetMyProfile({ query: { enabled: isAuthenticated, queryKey: getGetMyProfileQueryKey(), retry: false } });
   const { data: departments } = useListDepartments({ query: { enabled: isAuthenticated, queryKey: getListDepartmentsQueryKey() } });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [path] = useLocation();
   const displayName = profile?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Researcher';
@@ -77,32 +79,40 @@ function Shell({ children }: { children: ReactNode }) {
   return <div className="min-h-[100dvh] bg-background text-foreground">
     <CommandMenu />
     {editingProfile && <ProfileEditor profile={profile} user={user} departments={Array.isArray(departments) ? departments : []} onClose={() => setEditingProfile(false)} />}
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[254px] flex-col bg-sidebar text-sidebar-foreground md:flex">
-      <Link href="/" className="flex h-[82px] items-center gap-3 border-b border-sidebar-border px-7 no-underline">
-        <span className="grid size-9 place-items-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground"><FlaskConical size={19} /></span>
-        <span><strong className="font-editorial text-[21px] font-semibold leading-none tracking-tight">ResearchSphere</strong><small className="mt-1 block font-data text-[9px] uppercase tracking-[.2em] text-sidebar-foreground/60">Scholarly commons</small></span>
-      </Link>
-      <div className="px-5 pt-7 pb-3 font-data text-[9px] uppercase tracking-[.19em] text-sidebar-foreground/45">Workspace</div>
+    <aside className={`fixed inset-y-0 left-0 z-30 hidden flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 md:flex ${sidebarCollapsed ? 'w-[72px]' : 'w-[254px]'}`}>
+      <div className={`flex h-[82px] items-center border-b border-sidebar-border ${sidebarCollapsed ? 'justify-center px-0' : 'px-7 gap-3'}`}>
+        <Link href="/" className="flex items-center gap-3 no-underline">
+          <span className="grid size-9 place-items-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground"><FlaskConical size={19} /></span>
+          {!sidebarCollapsed && <span><strong className="font-editorial text-[21px] font-semibold leading-none tracking-tight">ResearchSphere</strong><small className="mt-1 block font-data text-[9px] uppercase tracking-[.2em] text-sidebar-foreground/60">Scholarly commons</small></span>}
+        </Link>
+        <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className={`${sidebarCollapsed ? 'absolute -right-3 top-8 rounded-full border border-sidebar-border bg-sidebar p-1 shadow-sm' : 'ml-auto rounded p-1 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground'}`}>
+          {sidebarCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={16} />}
+        </button>
+      </div>
+      {!sidebarCollapsed && <div className="px-5 pt-7 pb-3 font-data text-[9px] uppercase tracking-[.19em] text-sidebar-foreground/45">Workspace</div>}
+      <div className={sidebarCollapsed ? "pt-7" : ""}></div>
       <nav className="space-y-1 px-3">
         {navItems.filter(item => (!item.requiresAuth || isAuthenticated) && (!item.roles || item.roles.includes(role ?? 'STUDENT'))).map(item => {
           const active = path === item.href || (item.href !== '/' && path.startsWith(item.href));
           const Icon = item.icon;
-          return <Link key={item.href} href={item.href} className={`group flex items-center gap-3 rounded-lg px-3 py-[11px] text-[13px] no-underline transition-colors ${active ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`}>
-            <Icon size={16} strokeWidth={active ? 2.2 : 1.8} /><span className="flex-1">{item.label}</span>{item.href === '/review' && <span className="size-1.5 rounded-full bg-sidebar-primary" />}
+          return <Link key={item.href} href={item.href} className={`group flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} rounded-lg py-[11px] text-[13px] no-underline transition-colors ${active ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`} title={sidebarCollapsed ? item.label : undefined}>
+            <Icon size={16} strokeWidth={active ? 2.2 : 1.8} />{!sidebarCollapsed && <span className="flex-1">{item.label}</span>}{!sidebarCollapsed && item.href === '/review' && <span className="size-1.5 rounded-full bg-sidebar-primary" />}
           </Link>;
         })}
       </nav>
-      <div className="mt-auto border-t border-sidebar-border p-4">
-        <div className="flex items-center gap-3 rounded-lg bg-sidebar-accent/65 p-3">
-          <div className="grid size-9 shrink-0 place-items-center rounded-full bg-[#d7c5a5] text-[12px] font-semibold text-[#243c43]">{displayName.split(/\s+/).map(s => s[0]).slice(0, 2).join('').toUpperCase()}</div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[12px] font-medium">{isLoading || profileLoading ? 'Loading profile' : displayName}</div>
-            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-sidebar-foreground/55">
-              <span>{role ? role.toLowerCase() : isAuthenticated ? 'Researcher' : 'Guest'}{profile?.departmentName ? ` · ${profile.departmentName}` : ''}</span>
-              {isAuthenticated && <button onClick={() => setEditingProfile(true)} className="rounded hover:text-sidebar-foreground hover:underline">Edit</button>}
+      <div className={`mt-auto border-t border-sidebar-border ${sidebarCollapsed ? 'p-2' : 'p-4'}`}>
+        <div className={`flex items-center rounded-lg bg-sidebar-accent/65 ${sidebarCollapsed ? 'flex-col gap-2 p-2' : 'gap-3 p-3'}`}>
+          <div className="grid size-9 shrink-0 place-items-center rounded-full bg-[#d7c5a5] text-[12px] font-semibold text-[#243c43]" title={displayName}>{displayName.split(/\s+/).map(s => s[0]).slice(0, 2).join('').toUpperCase()}</div>
+          {!sidebarCollapsed && (
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[12px] font-medium">{isLoading || profileLoading ? 'Loading profile' : displayName}</div>
+              <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-sidebar-foreground/55">
+                <span>{role ? role.toLowerCase() : isAuthenticated ? 'Researcher' : 'Guest'}{profile?.departmentName ? ` · ${profile.departmentName}` : ''}</span>
+                {isAuthenticated && <button onClick={() => setEditingProfile(true)} className="rounded hover:text-sidebar-foreground hover:underline">Edit</button>}
+              </div>
             </div>
-          </div>
-          {isAuthenticated ? <button aria-label="Log out" title="Log out" onClick={() => logout()} className="rounded p-1.5 text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-white"><LogOut size={15} /></button> : <button onClick={() => login()} className="rounded-md bg-sidebar-primary px-2.5 py-1.5 text-[11px] font-semibold text-sidebar-primary-foreground">Log in</button>}
+          )}
+          {isAuthenticated ? <button aria-label="Log out" title="Log out" onClick={() => logout()} className={`rounded text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-white ${sidebarCollapsed ? 'p-2' : 'p-1.5'}`}><LogOut size={15} /></button> : <button onClick={() => login()} className="rounded-md bg-sidebar-primary px-2.5 py-1.5 text-[11px] font-semibold text-sidebar-primary-foreground" title={sidebarCollapsed ? "Log in" : undefined}>{sidebarCollapsed ? <LogOut size={15}/> : "Log in"}</button>}
         </div>
       </div>
     </aside>
@@ -111,7 +121,7 @@ function Shell({ children }: { children: ReactNode }) {
       <button onClick={() => setMenuOpen(v => !v)} className="rounded-lg p-2 hover:bg-muted" aria-label="Toggle navigation"><Menu size={20} /></button>
       {menuOpen && <div className="absolute left-0 right-0 top-[61px] border-b border-border bg-background p-3 shadow-lg">{navItems.filter(item => (!item.requiresAuth || isAuthenticated) && (!item.roles || item.roles.includes(role ?? 'STUDENT'))).map(({ href, label, icon: Icon }) => <Link onClick={() => setMenuOpen(false)} href={href} key={href} className="flex items-center gap-3 rounded-md px-3 py-3 text-sm no-underline hover:bg-muted"><Icon size={17} />{label}</Link>)}<button onClick={() => isAuthenticated ? logout() : login()} className="w-full px-3 py-3 text-left text-sm">{isAuthenticated ? 'Log out' : 'Log in'}</button></div>}
     </header>
-    <div className="md:pl-[254px]"><div className="mx-auto max-w-[1440px] px-5 pb-16 pt-7 sm:px-8 lg:px-12 lg:pt-10">{children}</div></div>
+    <div className={`transition-all duration-300 ${sidebarCollapsed ? 'md:pl-[72px]' : 'md:pl-[254px]'}`}><div className="mx-auto max-w-[1440px] px-5 pb-16 pt-7 sm:px-8 lg:px-12 lg:pt-10">{children}</div></div>
   </div>;
 }
 
@@ -194,7 +204,9 @@ function FilterSelect({ value, onChange, label, options }: { value: string; onCh
 
 function PaperPage() {
   const { paperId = '' } = useParams(); const { data: detail, isLoading, isError, refetch } = useGetPaper(paperId, { query: { queryKey: getGetPaperQueryKey(paperId) } });
-  const { isAuthenticated, login } = useAuth(); const { data: saved } = useListMyBookmarks({ query: { enabled: isAuthenticated, queryKey: getListMyBookmarksQueryKey(), retry: false } });
+  const { isAuthenticated, login } = useAuth(); 
+  const { data: saved } = useListMyBookmarks({ query: { enabled: isAuthenticated, queryKey: getListMyBookmarksQueryKey(), retry: false } });
+  const { data: profile } = useGetMyProfile({ query: { enabled: isAuthenticated, queryKey: getGetMyProfileQueryKey(), retry: false } });
   const add = useAddBookmark(); const remove = useRemoveBookmark(); const qc = useQueryClient();
   const addComment = useAddPaperComment();
   const [copied, setCopied] = useState('');
@@ -205,7 +217,36 @@ function PaperPage() {
     if (!paper) return;
     const apa = `${paper.authorName}. (${paper.year}). ${paper.title}. ${paper.departmentName}.${paper.doi ? ` https://doi.org/${paper.doi}` : ''}`;
     const content = style === 'APA' ? apa : style === 'IEEE' ? `${paper.authorName}, “${paper.title},” ${paper.departmentName}, ${paper.year}.${paper.doi ? ` doi: ${paper.doi}.` : ''}` : `@article{${paper.id.replace(/[^a-z0-9]/gi, '')},\n  title={${paper.title}},\n  author={${paper.authorName}},\n  year={${paper.year}},\n  journal={${paper.departmentName}},\n  doi={${paper.doi || ''}}\n}`;
-    void navigator.clipboard?.writeText(content).then(() => { setCopied(style); window.setTimeout(() => setCopied(''), 1800); }).catch(() => alert('Clipboard access is unavailable in this browser.'));
+    void navigator.clipboard?.writeText(content).then(() => { setCopied(style); window.setTimeout(() => setCopied(''), 1800); }).catch(() => toast.error('Clipboard access is unavailable in this browser.'));
+  };
+
+  const deleteComment = (commentId: string) => {
+    fetch(`/api/admin/papers/${paperId}/comments/${commentId}`, { method: 'DELETE' })
+      .then(res => {
+        if (res.ok) qc.invalidateQueries({ queryKey: getGetPaperQueryKey(paperId) });
+        else toast.error('Failed to delete comment.');
+      });
+  };
+
+  const [showRemoveForm, setShowRemoveForm] = useState(false);
+  const [removeReason, setRemoveReason] = useState('');
+  const [isRemoving, setIsRemoving] = useState(false);
+
+  const confirmRemovePaper = () => {
+    if (!removeReason.trim()) return;
+    setIsRemoving(true);
+    fetch(`/api/admin/papers/${paperId}/remove`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: removeReason })
+    }).then(res => {
+      setIsRemoving(false);
+      if (res.ok) {
+        window.location.href = '/';
+      } else {
+        toast.error('Failed to remove paper.');
+      }
+    });
   };
 
   const downloadCard = async () => {
@@ -227,7 +268,7 @@ function PaperPage() {
       link.click();
     } catch (e: any) {
       console.error(e);
-      alert('Error creating card: ' + e.message);
+      toast.error('Error creating card: ' + e.message);
     }
   };
 
@@ -238,7 +279,7 @@ function PaperPage() {
         <article>
           <div className="mb-3 flex flex-wrap items-center gap-2 font-data text-[9px] uppercase tracking-[.17em] text-muted-foreground"><span className="text-primary">{paper.departmentName}</span><span>/</span><span>{paper.researchArea}</span><span className="rounded bg-secondary px-2 py-1 text-secondary-foreground">{paper.paperType}</span></div>
           <h1 className="max-w-4xl font-editorial text-[36px] font-medium leading-[1.09] tracking-[-.025em] sm:text-[49px]">{paper.title}</h1>
-          <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 border-y border-border py-4 text-[11px]"><Link href={`/authors/${paper.uploadedById}`} className="font-semibold text-foreground no-underline hover:text-primary">{paper.authorName}</Link><span className="text-muted-foreground">· {paper.year}</span><span className="text-muted-foreground">· Version {paper.versionNumber}</span><span className="text-muted-foreground">· Cited by {paper.citedByCount || 0}</span>{paper.readingTime && <span className="text-muted-foreground">· ⏱️ {paper.readingTime} min read</span>}{paper.complexity && <span className="text-muted-foreground">· 🧠 {paper.complexity}</span>}<span className="ml-auto flex items-center gap-1 text-[9px] font-data uppercase tracking-wider text-primary"><CheckCircle2 size={13} />Approved</span></div>
+          <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 border-y border-border py-4 text-[11px]"><Link href={`/authors/${paper.uploadedById}`} className="font-semibold text-foreground no-underline hover:text-primary">{paper.authorName}</Link><span className="text-muted-foreground">· {paper.year}</span><span className="text-muted-foreground">· Version {paper.versionNumber}</span><span className="text-muted-foreground">· Cited by {paper.citedByCount || 0}</span>{paper.readingTime && <span className="text-muted-foreground">· ⏱️ {paper.readingTime} min read</span>}{paper.complexity && <span className="text-muted-foreground">· 🧠 {paper.complexity}</span>}<span className="ml-auto flex items-center gap-1 text-[9px] font-data uppercase tracking-wider text-primary">{paper.status === 'REJECTED' ? <><X size={13} />Removed</> : <><CheckCircle2 size={13} />Approved</>}</span></div>
           <section className="py-8"><h2 className="mb-4 font-data text-[10px] uppercase tracking-[.17em] text-primary">Abstract</h2><p className="max-w-3xl font-editorial text-[20px] leading-[1.65] text-foreground/90">{paper.abstract}</p></section>
           {paper.keywords?.length > 0 && <section className="border-t border-border py-6"><h2 className="mb-3 font-data text-[9px] uppercase tracking-[.17em] text-muted-foreground">Keywords</h2><div className="flex flex-wrap gap-2">{paper.keywords.map(k => <span key={k} className="rounded-full bg-secondary px-3 py-1.5 text-[10px] text-secondary-foreground">{k}</span>)}</div></section>}
           <section className="border-t border-border py-6"><h2 className="mb-3 font-data text-[9px] uppercase tracking-[.17em] text-muted-foreground">Publication details</h2><dl className="grid max-w-xl grid-cols-2 gap-x-6 gap-y-4 text-[11px]"><div><dt className="text-muted-foreground">Department</dt><dd className="mt-1 font-medium">{paper.departmentName}</dd></div><div><dt className="text-muted-foreground">Year</dt><dd className="mt-1 font-medium">{paper.year}</dd></div><div><dt className="text-muted-foreground">Research area</dt><dd className="mt-1 font-medium">{paper.researchArea}</dd></div><div><dt className="text-muted-foreground">DOI</dt><dd className="mt-1 font-data">{paper.doi || 'Not assigned'}</dd></div></dl></section>
@@ -248,10 +289,18 @@ function PaperPage() {
             <div className="space-y-6">
               {paper.comments && paper.comments.length > 0 ? (
                 paper.comments.map(c => (
-                  <div key={c.id} className="flex gap-4">
+                  <div key={c.id} className="group flex gap-4">
                     <div className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-secondary-foreground font-editorial font-medium">{c.userName.charAt(0).toUpperCase()}</div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2"><span className="text-[11px] font-semibold">{c.userName}</span><span className="text-[9px] text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</span></div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-semibold">{c.userName}</span>
+                        <span className="text-[9px] text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</span>
+                        {profile?.role === 'ADMIN' && (
+                          <button onClick={() => deleteComment(c.id)} className="ml-auto hidden text-destructive hover:underline group-hover:inline-flex text-[10px] items-center gap-1" title="Delete Comment">
+                            <Trash2 size={10} /> Delete
+                          </button>
+                        )}
+                      </div>
                       <p className="mt-1 text-[11px] leading-5 text-foreground/90">{c.content}</p>
                     </div>
                   </div>
@@ -279,6 +328,20 @@ function PaperPage() {
             {isAuthenticated && bookmarked && <PaperCollectionsManager paperId={paper.id} />}
             {paper.objectPath && <a href={`/api/storage/objects/${paper.objectPath}`} target="_blank" rel="noreferrer" className="mt-2 flex min-h-10 items-center justify-center gap-2 rounded-md border border-border px-4 text-[11px] font-semibold text-foreground no-underline hover:bg-muted"><ArrowDownToLine size={14} />Open full paper</a>}
             <Button className="mt-2 w-full" kind="outline" onClick={downloadCard}><Sparkles size={14} /> Share as Card</Button>
+            {profile?.role === 'ADMIN' && paper.status !== 'REJECTED' && (
+              showRemoveForm ? (
+                <div className="mt-4 rounded-md border border-red-500/20 bg-red-500/5 p-3">
+                  <div className="mb-2 text-[11px] font-semibold text-red-600">Remove Paper</div>
+                  <textarea value={removeReason} onChange={e => setRemoveReason(e.target.value)} placeholder="Reason for removal..." className="w-full resize-none rounded border border-input bg-background p-2 text-[10px]" rows={3} autoFocus />
+                  <div className="mt-2 flex gap-2">
+                    <Button className="flex-1 bg-red-600 text-white hover:bg-red-700 border-none" kind="outline" disabled={isRemoving || !removeReason.trim()} onClick={confirmRemovePaper}>{isRemoving ? 'Removing...' : 'Confirm'}</Button>
+                    <Button className="flex-1" kind="quiet" onClick={() => setShowRemoveForm(false)}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <Button className="mt-2 w-full bg-red-600 text-white hover:bg-red-700 border-none" kind="outline" onClick={() => setShowRemoveForm(true)}><Trash2 size={14} /> Remove Paper</Button>
+              )
+            )}
           </div>
           {paper.versions && paper.versions.length > 1 && (
             <div className="rounded-lg border border-border bg-card p-5"><h3 className="font-editorial text-xl">Version history</h3>
@@ -385,7 +448,7 @@ function SubmitPage() {
     e.preventDefault(); setError('');
     if (!objectPath || !title.trim() || !departmentId || !researchArea || !paperType) { setError('Complete every required field and upload your PDF.'); return; }
     const input: PaperInput = { title: title.trim(), abstract, year: Number(year), departmentId, researchArea, paperType, doi: doi || null, objectPath, keywords: keywords.split(',').map(k => k.trim()).filter(Boolean) };
-    submit.mutate({ data: input }, { onSuccess: () => { void qc.invalidateQueries({ queryKey: getListMySubmissionsQueryKey() }); setError(''); setFile(null); setObjectPath(''); setMetadata(null); setTitle(''); setAbstract(''); setKeywords(''); alert('Your paper was submitted for review.'); }, onError: () => setError('Submission could not be completed. Check the details and try again.') });
+    submit.mutate({ data: input }, { onSuccess: () => { void qc.invalidateQueries({ queryKey: getListMySubmissionsQueryKey() }); setError(''); setFile(null); setObjectPath(''); setMetadata(null); setTitle(''); setAbstract(''); setKeywords(''); toast.success('Your paper was submitted for review.'); }, onError: () => setError('Submission could not be completed. Check the details and try again.') });
   };
   const areas = (Array.isArray(categories) ? categories : []).filter(c => c.kind === 'RESEARCH_AREA'); const types = (Array.isArray(categories) ? categories : []).filter(c => c.kind === 'PAPER_TYPE');
   return <main className="page-enter">
@@ -460,6 +523,8 @@ function LibraryPage() {
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   
   const remove = useRemoveBookmark(); const qc = useQueryClient();
+  const [confirmData, setConfirmData] = useState<{ title: string; onConfirm: () => void; } | null>(null);
+  
   if (!isAuthenticated) return <LoginPrompt title="Your personal reading shelf" body="Log in to keep the papers you want to return to." onLogin={login} />;
   return <main className="page-enter">
     <PageHeading eyebrow="Your research, gathered" title="My library" subtitle="A personal shelf of saved papers, ready when the next question comes." />
@@ -475,7 +540,7 @@ function LibraryPage() {
             {(collections || []).map(c => (
               <li key={c.id} onClick={() => setActiveCollectionId(c.id)} className={`group flex cursor-pointer items-center justify-between rounded-md p-2 text-[11px] hover:bg-muted/50 ${activeCollectionId === c.id ? 'bg-muted/50 font-semibold' : ''}`}>
                 <span className="font-medium text-foreground flex items-center gap-1.5"><Folder size={12} className="text-primary/70" /> {c.name} <span className="text-muted-foreground ml-1">({c.paperCount})</span></span>
-                <button onClick={(e) => { e.stopPropagation(); if(confirm('Delete collection?')) { deleteCollection.mutate({ collectionId: c.id }, { onSuccess: () => { qc.invalidateQueries({ queryKey: getListMyCollectionsQueryKey() }); if(activeCollectionId === c.id) setActiveCollectionId(null); } }); } }} className="hidden text-destructive hover:underline group-hover:block" title="Delete Collection"><Trash2 size={12}/></button>
+                <button onClick={(e) => { e.stopPropagation(); setConfirmData({ title: `Delete collection '${c.name}'?`, onConfirm: () => { deleteCollection.mutate({ collectionId: c.id }, { onSuccess: () => { qc.invalidateQueries({ queryKey: getListMyCollectionsQueryKey() }); if(activeCollectionId === c.id) setActiveCollectionId(null); } }); } }); }} className="hidden text-destructive hover:underline group-hover:block" title="Delete Collection"><Trash2 size={12}/></button>
               </li>
             ))}
             {!collLoading && collections?.length === 0 && <li className="text-[10px] text-muted-foreground italic px-2">No collections yet</li>}
@@ -502,6 +567,17 @@ function LibraryPage() {
         })()}
       </div>
     </div>
+      {confirmData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-xl">
+            <h2 className="mb-6 font-editorial text-xl">{confirmData.title}</h2>
+            <div className="flex justify-end gap-2">
+              <Button kind="quiet" onClick={() => setConfirmData(null)}>Cancel</Button>
+              <Button onClick={() => { confirmData.onConfirm(); setConfirmData(null); }} className="bg-red-600 text-white hover:bg-red-700 border-none">Delete</Button>
+            </div>
+          </div>
+        </div>
+      )}
   </main>;
 }
 
@@ -569,6 +645,7 @@ function SubmissionsPage() {
               </div>
               <StatusBadge status={p.status} />
             </div>
+            {p.status === 'REJECTED' && (p as any).rejectionReason && <div className="mt-4 rounded-md border-l-2 border-red-500 bg-red-500/10 px-3 py-2.5"><div className="mb-1 font-data text-[9px] uppercase tracking-wider text-red-600">Removal Reason</div><p className="text-[11px] leading-5 text-foreground/80">{(p as any).rejectionReason}</p></div>}
             {p.latestReviewComment && <div className="mt-4 rounded-md border-l-2 border-accent-foreground bg-accent/50 px-3 py-2.5"><div className="mb-1 font-data text-[9px] uppercase tracking-wider text-accent-foreground">Reviewer note</div><p className="text-[11px] leading-5 text-foreground/80">{p.latestReviewComment}</p></div>}
             {p.versions && p.versions.length > 1 && (
               <div className="mt-4 border-t border-border pt-3">
@@ -683,6 +760,8 @@ function AdminPage() {
   const qc = useQueryClient(); const [newDept, setNewDept] = useState(false); const [newCategory, setNewCategory] = useState<'RESEARCH_AREA' | 'PAPER_TYPE' | null>(null);
   const createUser = useCreateAdminUser(); const [newUser, setNewUser] = useState(false); const createDept = useCreateDepartment(); const updateDept = useUpdateDepartment(); const deleteDept = useDeleteDepartment();
   const createCat = useCreateCategory(); const updateCat = useUpdateCategory(); const deleteCat = useDeleteCategory(); const updateRole = useUpdateUserRole();
+  const [promptData, setPromptData] = useState<{ title: string; fields: { name: string; label: string; defaultValue: string; }[]; onConfirm: (data: Record<string, string>) => void; } | null>(null);
+  const [confirmData, setConfirmData] = useState<{ title: string; onConfirm: () => void; } | null>(null);
   if (!isAuthenticated) return <LoginPrompt title="Repository administration" body="Log in with an administrator account to manage the academic archive." onLogin={login} />;
   if (profile && profile.role !== 'ADMIN') return <NoAccess text="This workspace is reserved for repository administrators." />;
   const invalidate = () => { void qc.invalidateQueries({ queryKey: getListDepartmentsQueryKey() }); void qc.invalidateQueries({ queryKey: getListCategoriesQueryKey() }); void qc.invalidateQueries({ queryKey: getGetAdminAnalyticsQueryKey() }); void qc.invalidateQueries({ queryKey: getListAdminUsersQueryKey() }); };
@@ -706,14 +785,44 @@ function AdminPage() {
         invalidate();
       },
       onError: (err: any) => {
-        alert(err.response?.data?.error || 'Failed to create user');
+        toast.error(err.response?.data?.error || 'Failed to create user');
       }
     });
   };
 
+
   const categoryCreate = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); if (!newCategory) return; const fd = new FormData(e.currentTarget); createCat.mutate({ data: { kind: newCategory, name: String(fd.get('name')) } }, { onSuccess: () => { setNewCategory(null); invalidate(); } }); };
-  const editDepartment = (d: Department) => { const name = prompt('Department name', d.name); if (name === null) return; const code = prompt('Department code', d.code); if (code === null) return; updateDept.mutate({ departmentId: d.id, data: { name, code: code.toUpperCase() } }, { onSuccess: invalidate }); };
-  const editCategory = (c: Category) => { const name = prompt('Category name', c.name); if (name === null) return; updateCat.mutate({ categoryId: c.id, data: { kind: c.kind, name } }, { onSuccess: invalidate }); };
+  
+  const editDepartment = (d: Department) => {
+    setPromptData({
+      title: 'Edit Department',
+      fields: [
+        { name: 'name', label: 'Department Name', defaultValue: d.name },
+        { name: 'code', label: 'Department Code', defaultValue: d.code }
+      ],
+      onConfirm: (data) => {
+        if (!data.name || !data.code) return;
+        updateDept.mutate({ departmentId: d.id, data: { name: data.name, code: data.code.toUpperCase() } }, { onSuccess: invalidate });
+      }
+    });
+  };
+
+  const editCategory = (c: Category) => {
+    setPromptData({
+      title: 'Edit Category',
+      fields: [
+        { name: 'name', label: 'Category Name', defaultValue: c.name }
+      ],
+      onConfirm: (data) => {
+        if (!data.name) return;
+        updateCat.mutate({ categoryId: c.id, data: { kind: c.kind, name: data.name } }, { onSuccess: invalidate });
+      }
+    });
+  };
+
+  const confirmDelete = (title: string, onConfirm: () => void) => {
+    setConfirmData({ title, onConfirm });
+  };
   const chart = (groups: { label: string; count: number }[] | undefined) => groups?.length ? <div className="space-y-3">{groups.map(g => <div key={g.label}><div className="mb-1 flex justify-between text-[10px]"><span>{g.label}</span><span className="font-data text-muted-foreground">{g.count}</span></div><div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.max(3, (g.count / Math.max(...groups.map(x => x.count), 1)) * 100))}%` }} /></div></div>)}</div> : <p className="text-[10px] text-muted-foreground">No data available yet.</p>;
   const listTop = (items: { id: string; title: string; count: number }[] | undefined, label: string) => items?.length ? <div className="space-y-3">{items.map(item => <div key={item.id} className="flex flex-col gap-1 border-b border-border pb-2 last:border-0 last:pb-0"><Link href={`/papers/${item.id}`} className="line-clamp-2 text-[11px] font-medium no-underline hover:text-primary">{item.title}</Link><span className="font-data text-[9px] text-muted-foreground">{item.count} {label}</span></div>)}</div> : <p className="text-[10px] text-muted-foreground">No data available yet.</p>;
 
@@ -733,10 +842,10 @@ function AdminPage() {
     <div className="mt-9 grid gap-8 xl:grid-cols-[1fr_1fr]">
       <section><div className="mb-4 flex items-end justify-between"><div><div className="font-data text-[9px] uppercase tracking-[.16em] text-primary">Academic structure</div><h2 className="mt-1 font-editorial text-[25px]">Departments</h2></div><Button kind="outline" onClick={() => setNewDept(v => !v)}><Plus size={14} />Add department</Button></div>
         {newDept && <form onSubmit={deptCreate} className="mb-3 flex flex-wrap gap-2 rounded-lg border border-primary/25 bg-primary/[.04] p-3"><input name="name" required placeholder="Department name" className="h-9 min-w-32 flex-1 rounded border border-input bg-card px-2 text-[10px]" /><input name="code" required minLength={2} placeholder="Code" className="h-9 w-24 rounded border border-input bg-card px-2 text-[10px]" /><Button type="submit" disabled={createDept.isPending}>{createDept.isPending ? 'Saving' : 'Save'}</Button><Button kind="quiet" onClick={() => setNewDept(false)}>Cancel</Button></form>}
-        <State loading={dl} error={de} retry={() => rd()} empty="No departments configured."><div className="divide-y divide-border rounded-lg border border-border bg-card">{(Array.isArray(departments) ? departments : []).map(d => <div key={d.id} className="flex items-center gap-3 px-3 py-3"><span className="grid size-8 place-items-center rounded bg-secondary font-data text-[9px] text-secondary-foreground">{d.code}</span><span className="flex-1 text-[11px] font-medium">{d.name}</span><button title="Edit department" onClick={() => editDepartment(d)} className="rounded p-1.5 text-muted-foreground hover:bg-muted"><Pencil size={14} /></button><button title="Delete department" onClick={() => { if (confirm(`Delete ${d.name}?`)) deleteDept.mutate({ departmentId: d.id }, { onSuccess: invalidate }); }} className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 size={14} /></button></div>)}</div></State>
+        <State loading={dl} error={de} retry={() => rd()} empty="No departments configured."><div className="divide-y divide-border rounded-lg border border-border bg-card">{(Array.isArray(departments) ? departments : []).map(d => <div key={d.id} className="flex items-center gap-3 px-3 py-3"><span className="grid size-8 place-items-center rounded bg-secondary font-data text-[9px] text-secondary-foreground">{d.code}</span><span className="flex-1 text-[11px] font-medium">{d.name}</span><button title="Edit department" onClick={() => editDepartment(d)} className="rounded p-1.5 text-muted-foreground hover:bg-muted"><Pencil size={14} /></button><button title="Delete department" onClick={() => confirmDelete(`Delete ${d.name}?`, () => deleteDept.mutate({ departmentId: d.id }, { onSuccess: invalidate }))} className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 size={14} /></button></div>)}</div></State>
       </section>
       <section><div className="mb-4 flex items-end justify-between"><div><div className="font-data text-[9px] uppercase tracking-[.16em] text-primary">Browse taxonomy</div><h2 className="mt-1 font-editorial text-[25px]">Categories</h2></div></div>
-        <div className="grid gap-4 sm:grid-cols-2">{([{ label: 'Research areas', list: Array.isArray(areas) ? areas : [], kind: 'RESEARCH_AREA' as const }, { label: 'Paper types', list: Array.isArray(types) ? types : [], kind: 'PAPER_TYPE' as const }]).map(group => <div key={group.kind} className="rounded-lg border border-border bg-card p-3"><div className="mb-2 flex items-center justify-between"><span className="font-data text-[9px] uppercase tracking-wider text-muted-foreground">{group.label}</span><button onClick={() => setNewCategory(group.kind)} title={`Add ${group.label.toLowerCase()}`} className="rounded p-1 text-primary hover:bg-muted"><Plus size={14} /></button></div>{group.list.map(c => <div key={c.id} className="flex items-center gap-2 border-t border-border py-2 text-[10px]"><span className="flex-1">{c.name}</span><button title="Edit category" onClick={() => editCategory(c)} className="rounded p-1 text-muted-foreground hover:bg-muted"><Pencil size={12} /></button><button title="Delete category" onClick={() => { if (confirm(`Delete ${c.name}?`)) deleteCat.mutate({ categoryId: c.id }, { onSuccess: invalidate }); }} className="rounded p-1 text-muted-foreground hover:text-destructive"><Trash2 size={12} /></button></div>)}</div>)}</div>
+        <div className="grid gap-4 sm:grid-cols-2">{([{ label: 'Research areas', list: Array.isArray(areas) ? areas : [], kind: 'RESEARCH_AREA' as const }, { label: 'Paper types', list: Array.isArray(types) ? types : [], kind: 'PAPER_TYPE' as const }]).map(group => <div key={group.kind} className="rounded-lg border border-border bg-card p-3"><div className="mb-2 flex items-center justify-between"><span className="font-data text-[9px] uppercase tracking-wider text-muted-foreground">{group.label}</span><button onClick={() => setNewCategory(group.kind)} title={`Add ${group.label.toLowerCase()}`} className="rounded p-1 text-primary hover:bg-muted"><Plus size={14} /></button></div>{group.list.map(c => <div key={c.id} className="flex items-center gap-2 border-t border-border py-2 text-[10px]"><span className="flex-1">{c.name}</span><button title="Edit category" onClick={() => editCategory(c)} className="rounded p-1 text-muted-foreground hover:bg-muted"><Pencil size={12} /></button><button title="Delete category" onClick={() => confirmDelete(`Delete ${c.name}?`, () => deleteCat.mutate({ categoryId: c.id }, { onSuccess: invalidate }))} className="rounded p-1 text-muted-foreground hover:text-destructive"><Trash2 size={12} /></button></div>)}</div>)}</div>
         {newCategory && <form onSubmit={categoryCreate} className="mt-3 flex gap-2 rounded-lg border border-primary/25 bg-primary/[.04] p-3"><input name="name" required placeholder={`New ${newCategory === 'RESEARCH_AREA' ? 'research area' : 'paper type'}`} className="h-9 min-w-0 flex-1 rounded border border-input bg-card px-2 text-[10px]" /><Button type="submit" disabled={createCat.isPending}>Save</Button><Button kind="quiet" onClick={() => setNewCategory(null)}>Cancel</Button></form>}
       </section>
     </div>
@@ -765,13 +874,50 @@ function AdminPage() {
         </div>
       </form>}
 
-      <State loading={ul} error={ue} retry={() => ru()} empty="No user profiles found."><div className="overflow-x-auto rounded-lg border border-border bg-card"><table className="w-full min-w-[640px] text-left"><thead><tr className="border-b border-border font-data text-[9px] uppercase tracking-wider text-muted-foreground"><th className="px-4 py-3 font-normal">Person</th><th className="px-4 py-3 font-normal">Department</th><th className="px-4 py-3 font-normal">Role</th><th className="px-4 py-3 font-normal">Access level</th></tr></thead><tbody>{(Array.isArray(users) ? users : []).map(u => <UserRow key={u.id} user={u} departments={departments || []} onChange={(role, departmentId) => updateRole.mutate({ userId: u.id, data: { role, departmentId } }, { onSuccess: () => qc.invalidateQueries({ queryKey: getListAdminUsersQueryKey() }) })} />)}</tbody></table></div></State>
+      <State loading={ul} error={ue} retry={() => ru()} empty="No user profiles found."><div className="overflow-x-auto rounded-lg border border-border bg-card"><table className="w-full min-w-[640px] text-left"><thead><tr className="border-b border-border font-data text-[9px] uppercase tracking-wider text-muted-foreground"><th className="px-4 py-3 font-normal">Person</th><th className="px-4 py-3 font-normal">Department</th><th className="px-4 py-3 font-normal">Role</th><th className="px-4 py-3 font-normal">Actions</th></tr></thead><tbody>{(Array.isArray(users) ? users : []).map(u => <UserRow key={u.id} user={u} departments={departments || []} onChange={(role, departmentId) => updateRole.mutate({ userId: u.id, data: { role, departmentId } }, { onSuccess: () => qc.invalidateQueries({ queryKey: getListAdminUsersQueryKey() }) })} onSuspend={() => { fetch(`/api/admin/users/${u.id}/${(u as any).isSuspended ? 'unsuspend' : 'suspend'}`, { method: 'POST' }).then(() => qc.invalidateQueries({ queryKey: getListAdminUsersQueryKey() })); }} />)}</tbody></table></div></State>
     </section>
+    {promptData && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          const data: Record<string, string> = {};
+          promptData.fields.forEach(f => data[f.name] = String(fd.get(f.name)));
+          promptData.onConfirm(data);
+          setPromptData(null);
+        }} className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-xl">
+          <h2 className="mb-4 font-editorial text-xl">{promptData.title}</h2>
+          <div className="space-y-3 mb-6">
+            {promptData.fields.map(f => (
+              <div key={f.name}>
+                <label className="mb-1 block font-data text-[9px] uppercase tracking-wider text-muted-foreground">{f.label}</label>
+                <input name={f.name} defaultValue={f.defaultValue} required className="w-full rounded border border-input bg-background px-3 py-2 text-[12px]" autoFocus={f === promptData.fields[0]} />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button kind="quiet" type="button" onClick={() => setPromptData(null)}>Cancel</Button>
+            <Button type="submit">Save</Button>
+          </div>
+        </form>
+      </div>
+    )}
+    {confirmData && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+        <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-xl">
+          <h2 className="mb-6 font-editorial text-xl">{confirmData.title}</h2>
+          <div className="flex justify-end gap-2">
+            <Button kind="quiet" onClick={() => setConfirmData(null)}>Cancel</Button>
+            <Button onClick={() => { confirmData.onConfirm(); setConfirmData(null); }} className="bg-red-600 text-white hover:bg-red-700 border-none">Delete</Button>
+          </div>
+        </div>
+      </div>
+    )}
   </main>;
 }
 function AdminPanel({ title, children }: { title: string; children: ReactNode }) { return <div className="rounded-lg border border-border bg-card p-4"><h3 className="mb-4 font-editorial text-xl">{title}</h3>{children}</div>; }
-function UserRow({ user, departments, onChange }: { user: AdminUser; departments: Department[]; onChange: (role: UserRole, departmentId: string | null) => void }) {
-  return <tr className="border-b border-border last:border-0"><td className="px-4 py-3"><div className="text-[11px] font-medium">{user.name}</div><div className="mt-0.5 text-[9px] text-muted-foreground">{user.email}</div></td><td className="px-4 py-3 text-[10px]">{user.departmentName || '—'}</td><td className="px-4 py-3"><select aria-label={`Role for ${user.name}`} value={user.role} onChange={e => onChange(e.target.value as UserRole, user.departmentId)} className="rounded border border-input bg-background px-2 py-1.5 text-[10px]"><option value="STUDENT">Student</option><option value="REVIEWER">Reviewer</option><option value="ADMIN">Administrator</option></select></td><td className="px-4 py-3"><select aria-label={`Department for ${user.name}`} value={user.departmentId || ''} onChange={e => onChange(user.role, e.target.value || null)} className="max-w-44 rounded border border-input bg-background px-2 py-1.5 text-[10px]"><option value="">No department</option>{departments.map(d => <option value={d.id} key={d.id}>{d.name}</option>)}</select></td></tr>;
+function UserRow({ user, departments, onChange, onSuspend }: { user: AdminUser; departments: Department[]; onChange: (role: UserRole, departmentId: string | null) => void; onSuspend: () => void }) {
+  return <tr className="border-b border-border last:border-0"><td className="px-4 py-3"><div className="text-[11px] font-medium">{user.name}</div><div className="mt-0.5 text-[9px] text-muted-foreground">{user.email}</div></td><td className="px-4 py-3"><select aria-label={`Department for ${user.name}`} value={user.departmentId || ''} onChange={e => onChange(user.role, e.target.value || null)} className="max-w-44 rounded border border-input bg-background px-2 py-1.5 text-[10px]"><option value="">No department</option>{departments.map(d => <option value={d.id} key={d.id}>{d.name}</option>)}</select></td><td className="px-4 py-3"><select aria-label={`Role for ${user.name}`} value={user.role} onChange={e => onChange(e.target.value as UserRole, user.departmentId)} className="rounded border border-input bg-background px-2 py-1.5 text-[10px]"><option value="STUDENT">Student</option><option value="REVIEWER">Reviewer</option><option value="ADMIN">Administrator</option></select></td><td className="px-4 py-3"><Button kind="outline" onClick={onSuspend}>{(user as any).isSuspended ? 'Unsuspend' : 'Suspend'}</Button></td></tr>;
 }
 function ProfileEditor({ profile, user, departments, onClose }: { profile: any; user: any; departments: Department[]; onClose: () => void }) {
   const updateProfile = useUpdateProfile();

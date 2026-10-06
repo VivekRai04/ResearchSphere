@@ -159,6 +159,7 @@ async function serializePaper(row: PaperWithNames) {
     citedByCount,
     readingTime: row.paper.readingTime,
     complexity: row.paper.complexity,
+    rejectionReason: row.paper.rejectionReason,
   };
 }
 

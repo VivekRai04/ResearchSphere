@@ -39,4 +39,6 @@ export interface Paper {
   readingTime?: number | null;
   /** @nullable */
   complexity?: string | null;
+  /** @nullable */
+  rejectionReason?: string | null;
 }

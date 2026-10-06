@@ -124,6 +124,7 @@ export const papersTable = pgTable(
     status: paperStatusEnum("status").notNull().default("PENDING_REVIEW"),
     readingTime: integer("reading_time"),
     complexity: varchar("complexity"),
+    rejectionReason: text("rejection_reason"),
     uploadedById: varchar("uploaded_by_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "restrict" }),
