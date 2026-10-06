@@ -37,6 +37,7 @@ Research discovery shouldn't feel like navigating an archive from the 1990s. We 
 - 📸 **Share as Card:** Instantly generate and download highly aesthetic, pixel-perfect citation cards for sharing papers on Twitter, LinkedIn, or academic blogs.
 - 🏛 **Institutional Organization:** Papers are meticulously categorized by department, research area, and paper type, creating a structured, highly navigable scholarly commons.
 - 🔐 **Authentication & Personal Libraries:** Full user accounts, bookmarking, and save-for-later functionality for curating personal research collections.
+- 🛡️ **Advanced Administration & Moderation:** Comprehensive administration dashboard with tools for staff management, paper moderation, and user suspension mechanisms to keep the repository high-quality and free of spam.
 
 ---
 
@@ -52,7 +53,7 @@ This project is structured as a `pnpm` monorepo containing three main services:
 - **Icons:** Lucide React
 
 ### ⚙️ Backend (`artifacts/api-server`)
-- **Framework:** Fastify (Node.js)
+- **Framework:** Express (Node.js)
 - **Database:** PostgreSQL
 - **ORM:** Drizzle ORM
 - **PDF Parsing:** `pdf-parse`
