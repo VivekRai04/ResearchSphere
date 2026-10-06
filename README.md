@@ -83,19 +83,27 @@ Create a `.env` file in `artifacts/api-server/` with the following variables:
 ```env
 PORT=5000
 DATABASE_URL=postgresql://postgres:root@localhost:5433/researchsphere
-JWT_SECRET=your_super_secret_jwt_key
 PUBLIC_OBJECT_SEARCH_PATHS=../../attached_assets
 ```
 
 
 ### 3. Install Dependencies
-Run the following command in the root of the repository to install all Node dependencies across the workspaces:
+First, install all Node dependencies across the workspaces:
 ```bash
 pnpm install
 ```
 
+Next, set up the Python virtual environment for the AI Service:
+```bash
+cd artifacts/ai-service
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+cd ../..
+```
+
 ### 4. Start the Application
-We have included a highly convenient Windows batch script that automatically clears ports and starts the Database, Backend, Frontend, and AI Service simultaneously.
+We have included a highly convenient Windows batch script that automatically clears ports and starts the Backend, Frontend, and AI Service simultaneously.
 
 Just double-click the script, or run it from the terminal:
 ```bash
@@ -115,7 +123,7 @@ Want to show this off to the world? The repository includes a `render.yaml` Blue
 
 1. **Database:** Get a free, permanent PostgreSQL database from [Neon.tech](https://neon.tech/). Copy your connection string.
 2. **Deploy:** Go to [Render.com](https://render.com/), create a new "Blueprint", and connect your GitHub repository.
-3. **Configure:** Render will automatically detect the `render.yaml` file, set up the Node.js API and the Vite React static site, and prompt you for the `DATABASE_URL` you got from Neon.
+3. **Configure:** Render will automatically detect the `render.yaml` file, set up the Node.js API, the Python AI Service, and the Vite React static site, and prompt you for the `DATABASE_URL` you got from Neon.
 4. **Live:** Click Apply, and your app will be live on the internet for free!
 
 *(Note: Render's free tier uses an ephemeral disk, meaning PDFs uploaded locally to the server will be wiped if the server sleeps. For permanent production use, you can integrate a free AWS S3 bucket or Supabase Storage.)*

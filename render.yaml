@@ -9,12 +9,27 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: JWT_SECRET
-        generateValue: true
       - key: DATABASE_URL
         sync: false # You will need to provide this from Neon.tech
       - key: FRONTEND_URL
         value: https://researchsphere-web.onrender.com
+      - key: AI_SERVICE_URL
+        fromService:
+          type: web
+          name: researchsphere-ai
+          envVarKey: RENDER_EXTERNAL_URL
+
+  # Python AI Service
+  - type: web
+    name: researchsphere-ai
+    env: python
+    plan: free
+    rootDir: artifacts/ai-service
+    buildCommand: pip install -r requirements.txt && pip install gunicorn
+    startCommand: gunicorn main:app -w 1 -b 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
 
   # Frontend Web App (Vite React)
   - type: web
