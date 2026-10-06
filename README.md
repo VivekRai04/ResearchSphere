@@ -60,9 +60,8 @@ This project is structured as a `pnpm` monorepo containing three main services:
 
 ### 🤖 AI Service (`artifacts/ai-service`)
 - **Language:** Python
-- **LLM:** Google Gemini API
-- **Document Parsing:** PyMuPDF (`fitz`)
-- **Server:** FastAPI / Flask
+- **Embedding Model:** SentenceTransformers (`all-mpnet-base-v2`)
+- **Server:** Flask
 
 ---
 
@@ -88,10 +87,6 @@ JWT_SECRET=your_super_secret_jwt_key
 PUBLIC_OBJECT_SEARCH_PATHS=../../attached_assets
 ```
 
-Create a `.env` file in `artifacts/ai-service/` and add your Google Gemini API key:
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
-```
 
 ### 3. Install Dependencies
 Run the following command in the root of the repository to install all Node dependencies across the workspaces:
