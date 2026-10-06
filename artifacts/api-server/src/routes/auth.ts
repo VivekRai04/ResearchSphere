@@ -155,6 +155,9 @@ router.post('/login', async (req, res, next) => {
     if (!valid) {
       res.status(401).json({ error: 'Invalid email or password' }); return;
     }
+    if (user.isSuspended) {
+      res.status(403).json({ error: `Your account is suspended. Reason: ${user.suspensionReason || 'No reason provided'}` }); return;
+    }
     const sid = await createSession({
       user: {
         id: user.id,

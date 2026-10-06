@@ -17,4 +17,7 @@ export interface AdminUser {
   departmentId: string | null;
   /** @nullable */
   departmentName: string | null;
+  isSuspended: boolean;
+  /** @nullable */
+  suspensionReason: string | null;
 }

@@ -288,6 +288,7 @@ router.get("/admin/users", async (req: Request, res: Response) => {
     departmentId: profile.departmentId,
     departmentName,
     isSuspended: user.isSuspended,
+    suspensionReason: user.suspensionReason,
   }))));
 });
 
@@ -463,14 +464,23 @@ router.delete("/admin/papers/:paperId/comments/:commentId", async (req: Request,
 router.post("/admin/users/:userId/suspend", async (req: Request, res: Response) => {
   if (!await requireAdmin(req, res)) return;
   const userId = routeParam(req, "userId");
+  const reason = req.body?.reason || null;
 
   try {
-    const [user] = await db.update(usersTable).set({ isSuspended: true }).where(eq(usersTable.id, userId)).returning();
+    const targetProfile = await db.query.userProfilesTable.findFirst({
+      where: (profiles, { eq }) => eq(profiles.userId, userId)
+    });
+    if (targetProfile?.role === 'ADMIN') {
+      res.status(403).json({ error: "Administrators cannot be suspended" });
+      return;
+    }
+
+    const [user] = await db.update(usersTable).set({ isSuspended: true, suspensionReason: reason }).where(eq(usersTable.id, userId)).returning();
     if (!user) {
       res.status(404).json({ error: "User not found" });
       return;
     }
-    res.json({ success: true, isSuspended: user.isSuspended });
+    res.json({ success: true, isSuspended: user.isSuspended, suspensionReason: user.suspensionReason });
   } catch (error) {
     res.status(500).json({ error: "Failed to suspend user" });
   }
@@ -481,12 +491,12 @@ router.post("/admin/users/:userId/unsuspend", async (req: Request, res: Response
   const userId = routeParam(req, "userId");
 
   try {
-    const [user] = await db.update(usersTable).set({ isSuspended: false }).where(eq(usersTable.id, userId)).returning();
+    const [user] = await db.update(usersTable).set({ isSuspended: false, suspensionReason: null }).where(eq(usersTable.id, userId)).returning();
     if (!user) {
       res.status(404).json({ error: "User not found" });
       return;
     }
-    res.json({ success: true, isSuspended: user.isSuspended });
+    res.json({ success: true, isSuspended: user.isSuspended, suspensionReason: user.suspensionReason });
   } catch (error) {
     res.status(500).json({ error: "Failed to unsuspend user" });
   }

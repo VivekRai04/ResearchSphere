@@ -19,4 +19,7 @@ export interface UserProfile {
   departmentId: string | null;
   /** @nullable */
   departmentName: string | null;
+  isSuspended: boolean;
+  /** @nullable */
+  suspensionReason: string | null;
 }

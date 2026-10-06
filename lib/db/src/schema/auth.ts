@@ -21,6 +21,7 @@ export const usersTable = pgTable('users', {
   passwordHash: varchar('password_hash'),
   profileImageUrl: varchar('profile_image_url'),
   isSuspended: boolean('is_suspended').default(false).notNull(),
+  suspensionReason: varchar('suspension_reason'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

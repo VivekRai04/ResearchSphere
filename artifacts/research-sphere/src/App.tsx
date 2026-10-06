@@ -823,6 +823,23 @@ function AdminPage() {
   const confirmDelete = (title: string, onConfirm: () => void) => {
     setConfirmData({ title, onConfirm });
   };
+  const handleSuspend = (u: AdminUser) => {
+    if ((u as any).isSuspended) {
+      fetch(`/api/admin/users/${u.id}/unsuspend`, { method: 'POST' }).then(() => qc.invalidateQueries({ queryKey: getListAdminUsersQueryKey() }));
+    } else {
+      setPromptData({
+        title: `Suspend ${u.name}`,
+        fields: [{ name: 'reason', label: 'Suspension Reason', defaultValue: '' }],
+        onConfirm: (data) => {
+          fetch(`/api/admin/users/${u.id}/suspend`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: data.reason })
+          }).then(() => qc.invalidateQueries({ queryKey: getListAdminUsersQueryKey() }));
+        }
+      });
+    }
+  };
   const chart = (groups: { label: string; count: number }[] | undefined) => groups?.length ? <div className="space-y-3">{groups.map(g => <div key={g.label}><div className="mb-1 flex justify-between text-[10px]"><span>{g.label}</span><span className="font-data text-muted-foreground">{g.count}</span></div><div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.max(3, (g.count / Math.max(...groups.map(x => x.count), 1)) * 100))}%` }} /></div></div>)}</div> : <p className="text-[10px] text-muted-foreground">No data available yet.</p>;
   const listTop = (items: { id: string; title: string; count: number }[] | undefined, label: string) => items?.length ? <div className="space-y-3">{items.map(item => <div key={item.id} className="flex flex-col gap-1 border-b border-border pb-2 last:border-0 last:pb-0"><Link href={`/papers/${item.id}`} className="line-clamp-2 text-[11px] font-medium no-underline hover:text-primary">{item.title}</Link><span className="font-data text-[9px] text-muted-foreground">{item.count} {label}</span></div>)}</div> : <p className="text-[10px] text-muted-foreground">No data available yet.</p>;
 
@@ -874,7 +891,7 @@ function AdminPage() {
         </div>
       </form>}
 
-      <State loading={ul} error={ue} retry={() => ru()} empty="No user profiles found."><div className="overflow-x-auto rounded-lg border border-border bg-card"><table className="w-full min-w-[640px] text-left"><thead><tr className="border-b border-border font-data text-[9px] uppercase tracking-wider text-muted-foreground"><th className="px-4 py-3 font-normal">Person</th><th className="px-4 py-3 font-normal">Department</th><th className="px-4 py-3 font-normal">Role</th><th className="px-4 py-3 font-normal">Actions</th></tr></thead><tbody>{(Array.isArray(users) ? users : []).map(u => <UserRow key={u.id} user={u} departments={departments || []} onChange={(role, departmentId) => updateRole.mutate({ userId: u.id, data: { role, departmentId } }, { onSuccess: () => qc.invalidateQueries({ queryKey: getListAdminUsersQueryKey() }) })} onSuspend={() => { fetch(`/api/admin/users/${u.id}/${(u as any).isSuspended ? 'unsuspend' : 'suspend'}`, { method: 'POST' }).then(() => qc.invalidateQueries({ queryKey: getListAdminUsersQueryKey() })); }} />)}</tbody></table></div></State>
+      <State loading={ul} error={ue} retry={() => ru()} empty="No user profiles found."><div className="overflow-x-auto rounded-lg border border-border bg-card"><table className="w-full min-w-[640px] text-left"><thead><tr className="border-b border-border font-data text-[9px] uppercase tracking-wider text-muted-foreground"><th className="px-4 py-3 font-normal">Person</th><th className="px-4 py-3 font-normal">Department</th><th className="px-4 py-3 font-normal">Role</th><th className="px-4 py-3 font-normal">Actions</th></tr></thead><tbody>{(Array.isArray(users) ? users : []).map(u => <UserRow key={u.id} user={u} departments={departments || []} onChange={(role, departmentId) => updateRole.mutate({ userId: u.id, data: { role, departmentId } }, { onSuccess: () => qc.invalidateQueries({ queryKey: getListAdminUsersQueryKey() }) })} onSuspend={() => handleSuspend(u)} />)}</tbody></table></div></State>
     </section>
     {promptData && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
@@ -917,7 +934,7 @@ function AdminPage() {
 }
 function AdminPanel({ title, children }: { title: string; children: ReactNode }) { return <div className="rounded-lg border border-border bg-card p-4"><h3 className="mb-4 font-editorial text-xl">{title}</h3>{children}</div>; }
 function UserRow({ user, departments, onChange, onSuspend }: { user: AdminUser; departments: Department[]; onChange: (role: UserRole, departmentId: string | null) => void; onSuspend: () => void }) {
-  return <tr className="border-b border-border last:border-0"><td className="px-4 py-3"><div className="text-[11px] font-medium">{user.name}</div><div className="mt-0.5 text-[9px] text-muted-foreground">{user.email}</div></td><td className="px-4 py-3"><select aria-label={`Department for ${user.name}`} value={user.departmentId || ''} onChange={e => onChange(user.role, e.target.value || null)} className="max-w-44 rounded border border-input bg-background px-2 py-1.5 text-[10px]"><option value="">No department</option>{departments.map(d => <option value={d.id} key={d.id}>{d.name}</option>)}</select></td><td className="px-4 py-3"><select aria-label={`Role for ${user.name}`} value={user.role} onChange={e => onChange(e.target.value as UserRole, user.departmentId)} className="rounded border border-input bg-background px-2 py-1.5 text-[10px]"><option value="STUDENT">Student</option><option value="REVIEWER">Reviewer</option><option value="ADMIN">Administrator</option></select></td><td className="px-4 py-3"><Button kind="outline" onClick={onSuspend}>{(user as any).isSuspended ? 'Unsuspend' : 'Suspend'}</Button></td></tr>;
+  return <tr className="border-b border-border last:border-0"><td className="px-4 py-3"><div className="text-[11px] font-medium">{user.name}</div><div className="mt-0.5 text-[9px] text-muted-foreground">{user.email}</div></td><td className="px-4 py-3"><select aria-label={`Department for ${user.name}`} value={user.departmentId || ''} onChange={e => onChange(user.role, e.target.value || null)} className="max-w-44 rounded border border-input bg-background px-2 py-1.5 text-[10px]"><option value="">No department</option>{departments.map(d => <option value={d.id} key={d.id}>{d.name}</option>)}</select></td><td className="px-4 py-3"><select aria-label={`Role for ${user.name}`} value={user.role} onChange={e => onChange(e.target.value as UserRole, user.departmentId)} className="rounded border border-input bg-background px-2 py-1.5 text-[10px]"><option value="STUDENT">Student</option><option value="REVIEWER">Reviewer</option><option value="ADMIN">Administrator</option></select></td><td className="px-4 py-3"><Button kind="outline" disabled={user.role === 'ADMIN'} onClick={onSuspend}>{(user as any).isSuspended ? 'Unsuspend' : 'Suspend'}</Button></td></tr>;
 }
 function ProfileEditor({ profile, user, departments, onClose }: { profile: any; user: any; departments: Department[]; onClose: () => void }) {
   const updateProfile = useUpdateProfile();

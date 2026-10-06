@@ -133,7 +133,9 @@ export const GetMyProfileResponse = zod.object({
   "profileImageUrl": zod.string().nullable(),
   "role": zod.enum(['STUDENT', 'REVIEWER', 'ADMIN']),
   "departmentId": zod.string().nullable(),
-  "departmentName": zod.string().nullable()
+  "departmentName": zod.string().nullable(),
+  "isSuspended": zod.boolean(),
+  "suspensionReason": zod.string().nullable()
 })
 
 
@@ -153,7 +155,9 @@ export const UpdateProfileResponse = zod.object({
   "profileImageUrl": zod.string().nullable(),
   "role": zod.enum(['STUDENT', 'REVIEWER', 'ADMIN']),
   "departmentId": zod.string().nullable(),
-  "departmentName": zod.string().nullable()
+  "departmentName": zod.string().nullable(),
+  "isSuspended": zod.boolean(),
+  "suspensionReason": zod.string().nullable()
 })
 
 
@@ -1076,7 +1080,9 @@ export const ListAdminUsersResponseItem = zod.object({
   "email": zod.string().email().nullable(),
   "role": zod.enum(['STUDENT', 'REVIEWER', 'ADMIN']),
   "departmentId": zod.string().nullable(),
-  "departmentName": zod.string().nullable()
+  "departmentName": zod.string().nullable(),
+  "isSuspended": zod.boolean(),
+  "suspensionReason": zod.string().nullable()
 })
 export const ListAdminUsersResponse = zod.array(ListAdminUsersResponseItem)
 
@@ -1099,7 +1105,9 @@ export const CreateAdminUserResponse = zod.object({
   "email": zod.string().email().nullable(),
   "role": zod.enum(['STUDENT', 'REVIEWER', 'ADMIN']),
   "departmentId": zod.string().nullable(),
-  "departmentName": zod.string().nullable()
+  "departmentName": zod.string().nullable(),
+  "isSuspended": zod.boolean(),
+  "suspensionReason": zod.string().nullable()
 })
 
 
@@ -1121,7 +1129,9 @@ export const UpdateUserRoleResponse = zod.object({
   "email": zod.string().email().nullable(),
   "role": zod.enum(['STUDENT', 'REVIEWER', 'ADMIN']),
   "departmentId": zod.string().nullable(),
-  "departmentName": zod.string().nullable()
+  "departmentName": zod.string().nullable(),
+  "isSuspended": zod.boolean(),
+  "suspensionReason": zod.string().nullable()
 })
 
 

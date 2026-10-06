@@ -1058,7 +1058,11 @@ components:
           type: [string, "null"]
         departmentName:
           type: [string, "null"]
-      required: [id, name, email, profileImageUrl, role, departmentId, departmentName]
+        isSuspended:
+          type: boolean
+        suspensionReason:
+          type: [string, "null"]
+      required: [id, name, email, profileImageUrl, role, departmentId, departmentName, isSuspended, suspensionReason]
     UserRole:
       type: string
       enum: [STUDENT, REVIEWER, ADMIN]
@@ -1390,7 +1394,11 @@ components:
           type: [string, "null"]
         departmentName:
           type: [string, "null"]
-      required: [id, name, email, role, departmentId, departmentName]
+        isSuspended:
+          type: boolean
+        suspensionReason:
+          type: [string, "null"]
+      required: [id, name, email, role, departmentId, departmentName, isSuspended, suspensionReason]
     AnalyticsGroup:
       type: object
       properties:

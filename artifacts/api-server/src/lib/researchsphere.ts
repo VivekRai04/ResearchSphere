@@ -81,6 +81,8 @@ export async function getCurrentProfile(req: Request) {
     role: profile.role,
     departmentId: profile.departmentId,
     departmentName,
+    isSuspended: user.isSuspended,
+    suspensionReason: user.suspensionReason,
   };
 }
 

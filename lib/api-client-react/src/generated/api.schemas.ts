@@ -72,6 +72,9 @@ export interface UserProfile {
   departmentId: string | null;
   /** @nullable */
   departmentName: string | null;
+  isSuspended: boolean;
+  /** @nullable */
+  suspensionReason: string | null;
 }
 
 export type PaperStatus = typeof PaperStatus[keyof typeof PaperStatus];
@@ -277,6 +280,9 @@ export interface AdminUser {
   departmentId: string | null;
   /** @nullable */
   departmentName: string | null;
+  isSuspended: boolean;
+  /** @nullable */
+  suspensionReason: string | null;
 }
 
 export interface AnalyticsGroup {
