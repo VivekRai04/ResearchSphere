@@ -688,17 +688,78 @@ function ReviewPage() {
   const [active, setActive] = useState<Paper | null>(null); const [comments, setComments] = useState(''); const [reviewError, setReviewError] = useState(''); const review = useReviewPaper(); const qc = useQueryClient();
   if (!isAuthenticated) return <LoginPrompt title="Faculty review" body="Log in with your university account to access the review queue." onLogin={login} />;
   if (profile && profile.role === 'STUDENT') return <NoAccess text="The review queue is available to faculty reviewers and administrators." />;
-  const decide = (status: 'APPROVED' | 'REJECTED' | 'REVISION_REQUIRED') => { if (!active) return; if (!comments.trim()) { setReviewError('A note to the author is required before a decision.'); return; } setReviewError(''); review.mutate({ paperId: active.id, data: { status, comments } }, { onSuccess: () => { qc.setQueryData(getListReviewQueueQueryKey(), (old: any) => Array.isArray(old) ? old.filter((p: any) => p.id !== active.id) : old); void qc.invalidateQueries({ queryKey: getListReviewQueueQueryKey() }); void qc.invalidateQueries({ queryKey: getListPapersQueryKey() }); void qc.invalidateQueries({ queryKey: getListMySubmissionsQueryKey() }); setActive(null); setComments(''); }, onError: () => setReviewError('Review action failed. Please retry.') }); };
+  const isSelf = Boolean(active && profile && active.uploadedById === profile.id);
+  const decide = (status: 'APPROVED' | 'REJECTED' | 'REVISION_REQUIRED') => {
+    if (!active) return;
+    if (isSelf) {
+      setReviewError('Conflict of interest: You cannot review or approve your own submission.');
+      return;
+    }
+    if (!comments.trim()) {
+      setReviewError('A note to the author is required before a decision.');
+      return;
+    }
+    setReviewError('');
+    review.mutate(
+      { paperId: active.id, data: { status, comments } },
+      {
+        onSuccess: () => {
+          qc.setQueryData(getListReviewQueueQueryKey(), (old: any) => Array.isArray(old) ? old.filter((p: any) => p.id !== active.id) : old);
+          void qc.invalidateQueries({ queryKey: getListReviewQueueQueryKey() });
+          void qc.invalidateQueries({ queryKey: getListPapersQueryKey() });
+          void qc.invalidateQueries({ queryKey: getListMySubmissionsQueryKey() });
+          setActive(null);
+          setComments('');
+        },
+        onError: (err: any) => setReviewError(err?.data?.error || err?.message || 'Review action failed. Please retry.'),
+      }
+    );
+  };
   return <>
     <main className="page-enter"><PageHeading eyebrow="Faculty workspace" title="Review queue" subtitle="Read with care. Leave a clear, useful record for each author." /><div className="mb-5 flex items-center gap-2 rounded-md border border-border bg-card px-4 py-3"><Clock3 size={15} className="text-primary" /><span className="text-[11px]">{queue?.length || 0} papers awaiting review</span><span className="ml-auto font-data text-[9px] uppercase tracking-wider text-muted-foreground">Assigned queue</span></div>
-      <State loading={isLoading} error={isError} retry={() => refetch()} empty="The queue is clear. Thank you for your reviews."><div>{(Array.isArray(queue) ? queue : []).map(p => <div key={p.id} className="border-b border-border py-5 first:border-t"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start"><div><div className="mb-1 font-data text-[9px] uppercase tracking-wider text-muted-foreground">{p.departmentName} · {p.researchArea}</div><Link href={`/papers/${p.id}`} className="font-editorial text-[23px] no-underline hover:text-primary">{p.title}</Link><div className="mt-2 text-[10px] text-muted-foreground">{p.authorName} · Submitted {new Date(p.createdAt).toLocaleDateString()} · Version {p.versionNumber}</div></div><Button kind="outline" onClick={() => { setActive(p); setComments(''); }}>Review paper <ArrowRight size={14} /></Button></div><p className="mt-3 max-w-4xl line-clamp-2 text-[11px] leading-5 text-muted-foreground">{p.abstract}</p></div>)}</div></State>
+      <State loading={isLoading} error={isError} retry={() => refetch()} empty="The queue is clear. Thank you for your reviews.">
+        <div>
+          {(Array.isArray(queue) ? queue : []).map(p => {
+            const isAuthor = Boolean(profile && p.uploadedById === profile.id);
+            return (
+              <div key={p.id} className="border-b border-border py-5 first:border-t">
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                  <div>
+                    <div className="mb-1 flex items-center gap-2 font-data text-[9px] uppercase tracking-wider text-muted-foreground">
+                      <span>{p.departmentName} · {p.researchArea}</span>
+                      {isAuthor && (
+                        <span className="rounded-full bg-accent/80 px-2 py-0.5 text-[9px] font-semibold text-accent-foreground">
+                          Your submission
+                        </span>
+                      )}
+                    </div>
+                    <Link href={`/papers/${p.id}`} className="font-editorial text-[23px] no-underline hover:text-primary">{p.title}</Link>
+                    <div className="mt-2 text-[10px] text-muted-foreground">{p.authorName} · Submitted {new Date(p.createdAt).toLocaleDateString()} · Version {p.versionNumber}</div>
+                  </div>
+                  <Button kind="outline" onClick={() => { setActive(p); setComments(''); }}>
+                    {isAuthor ? 'View submission' : 'Review paper'} <ArrowRight size={14} />
+                  </Button>
+                </div>
+                <p className="mt-3 max-w-4xl line-clamp-2 text-[11px] leading-5 text-muted-foreground">{p.abstract}</p>
+              </div>
+            );
+          })}
+        </div>
+      </State>
     </main>
     {active && (
       <div className="fixed inset-0 z-[100] flex bg-background/80 p-4 backdrop-blur-sm sm:p-6 md:left-[254px] lg:p-8">
         <div className="mx-auto flex h-full w-full max-w-[1500px] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl ring-1 ring-black/5">
           <div className="flex shrink-0 items-start justify-between border-b border-border bg-muted/30 px-6 py-5">
             <div>
-              <div className="font-data text-[10px] font-semibold uppercase tracking-widest text-primary">Review paper</div>
+              <div className="flex items-center gap-2 font-data text-[10px] font-semibold uppercase tracking-widest text-primary">
+                <span>Review paper</span>
+                {isSelf && (
+                  <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[9px] font-semibold text-destructive">
+                    Self-Submission
+                  </span>
+                )}
+              </div>
               <h2 className="mt-1 font-editorial text-[24px] leading-tight line-clamp-1">{active.title}</h2>
             </div>
             <button onClick={() => setActive(null)} className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" aria-label="Close review"><X size={20} /></button>
@@ -732,16 +793,29 @@ function ReviewPage() {
                   </div>
                 </div>
               )}
-              <label className="mt-6 flex min-h-[140px] flex-1 flex-col border-t border-border pt-5">
-                <span className="mb-3 font-data text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Comments for the author</span>
-                <textarea value={comments} onChange={e => { setComments(e.target.value); setReviewError(''); }} placeholder="Share specific, constructive feedback…" className="w-full flex-1 resize-none rounded-xl border border-input bg-card p-4 text-[12px] leading-relaxed shadow-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary" />
-              </label>
+              {isSelf ? (
+                <div className="mt-6 rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-[12px] text-destructive">
+                  <div className="font-semibold">Conflict of Interest</div>
+                  <div className="mt-1 text-[11px] opacity-90">
+                    You submitted this research paper. In accordance with peer review standards, you cannot review or approve your own submission. Another faculty reviewer or administrator must conduct this review.
+                  </div>
+                </div>
+              ) : (
+                <label className="mt-6 flex min-h-[140px] flex-1 flex-col border-t border-border pt-5">
+                  <span className="mb-3 font-data text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Comments for the author</span>
+                  <textarea value={comments} onChange={e => { setComments(e.target.value); setReviewError(''); }} placeholder="Share specific, constructive feedback…" className="w-full flex-1 resize-none rounded-xl border border-input bg-card p-4 text-[12px] leading-relaxed shadow-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary" />
+                </label>
+              )}
               {reviewError && <p role="alert" className="mt-3 text-[11px] font-medium text-destructive">{reviewError}</p>}
               <div className="mt-8 flex shrink-0 flex-wrap justify-end gap-3 border-t border-border/50 pt-5">
-                <Button kind="quiet" onClick={() => setActive(null)}>Cancel</Button>
-                <Button kind="danger" disabled={review.isPending} onClick={() => decide('REJECTED')}>Decline</Button>
-                <Button kind="outline" disabled={review.isPending} onClick={() => decide('REVISION_REQUIRED')}>Request revision</Button>
-                <Button disabled={review.isPending} onClick={() => decide('APPROVED')}><Check size={15} />Approve</Button>
+                <Button kind="quiet" onClick={() => setActive(null)}>{isSelf ? 'Close' : 'Cancel'}</Button>
+                {!isSelf && (
+                  <>
+                    <Button kind="danger" disabled={review.isPending} onClick={() => decide('REJECTED')}>Decline</Button>
+                    <Button kind="outline" disabled={review.isPending} onClick={() => decide('REVISION_REQUIRED')}>Request revision</Button>
+                    <Button disabled={review.isPending} onClick={() => decide('APPROVED')}><Check size={15} />Approve</Button>
+                  </>
+                )}
               </div>
             </div>
           </div>

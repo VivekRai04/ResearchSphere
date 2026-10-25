@@ -370,38 +370,52 @@ router.get("/papers", async (req: Request, res: Response) => {
     try {
       const { embedQuery } = await import("../lib/ai.js");
       const queryEmbedding = await embedQuery(q);
-      
       const { sql } = await import("drizzle-orm");
-      
-      const closest = await db.select({
+
+      // Query vector distances for all embedded papers
+      const vectorDistances = await db.select({
         paperId: paperVersionsTable.paperId,
-      })
-      .from(paperEmbeddingsTable)
-      .innerJoin(paperVersionsTable, eq(paperEmbeddingsTable.paperVersionId, paperVersionsTable.id))
-      .where(sql`${paperEmbeddingsTable.embedding} <=> ${JSON.stringify(queryEmbedding)} < 0.60`)
-      .orderBy(sql`${paperEmbeddingsTable.embedding} <=> ${JSON.stringify(queryEmbedding)}`)
-      .limit(15);
-      
-      const closestIds = closest.map(c => c.paperId);
-      const semanticPapers = papers.filter((p: any) => closestIds.includes(p.id));
-      semanticPapers.sort((a: any, b: any) => closestIds.indexOf(a.id) - closestIds.indexOf(b.id));
-      
-      const allEmbedded = await db.select({
-        paperId: paperVersionsTable.paperId,
+        distance: sql<number>`${paperEmbeddingsTable.embedding} <=> ${JSON.stringify(queryEmbedding)}`,
       })
       .from(paperEmbeddingsTable)
       .innerJoin(paperVersionsTable, eq(paperEmbeddingsTable.paperVersionId, paperVersionsTable.id));
-      
-      const allEmbeddedIds = new Set(allEmbedded.map(e => e.paperId));
-      
-      const unembeddedPapers = papers.filter((p: any) => !allEmbeddedIds.has(p.id));
-      const rankedFallback = rankByTfidf(unembeddedPapers, q, (paper) =>
+
+      const distMap = new Map<string, number>();
+      for (const v of vectorDistances) {
+        const d = Number(v.distance);
+        if (!distMap.has(v.paperId) || d < distMap.get(v.paperId)!) {
+          distMap.set(v.paperId, d);
+        }
+      }
+
+      // Compute lexical TF-IDF relevance
+      const tfidfRanked = rankByTfidf(papers, q, (paper) =>
         `${paper.title} ${paper.abstract} ${paper.researchArea} ${paper.paperType} ${paper.keywords.join(" ")}`,
-      )
-      .filter(({ score }) => score > 0)
-      .map(({ record }) => record);
-      
-      papers = [...semanticPapers, ...rankedFallback];
+      );
+      const tfidfMap = new Map(tfidfRanked.map((r) => [r.record.id, r.score]));
+
+      // Include papers with semantic relevance (distance < 0.86) OR lexical match (tfidf > 0)
+      const matched = papers.filter((p: any) => {
+        const dist = distMap.get(p.id);
+        const tfidf = tfidfMap.get(p.id) ?? 0;
+        const isSemanticMatch = dist !== undefined && dist < 0.86;
+        const isLexicalMatch = tfidf > 0;
+        return isSemanticMatch || isLexicalMatch;
+      });
+
+      // Rank by combined semantic similarity and keyword relevance
+      matched.sort((a: any, b: any) => {
+        const distA = distMap.get(a.id) ?? 1.0;
+        const distB = distMap.get(b.id) ?? 1.0;
+        const tfidfA = tfidfMap.get(a.id) ?? 0;
+        const tfidfB = tfidfMap.get(b.id) ?? 0;
+
+        const scoreA = (1 - distA) + (tfidfA > 0 ? 0.25 : 0) + tfidfA * 0.1;
+        const scoreB = (1 - distB) + (tfidfB > 0 ? 0.25 : 0) + tfidfB * 0.1;
+        return scoreB - scoreA;
+      });
+
+      papers = matched;
     } catch (error) {
       console.error("Semantic search failed, falling back to TF-IDF:", error);
       papers = rankByTfidf(papers, q, (paper) =>
@@ -908,6 +922,10 @@ router.post("/review/papers/:paperId", async (req: Request, res: Response) => {
     .where(eq(papersTable.id, routeParam(req, "paperId"))).limit(1);
   if (!paper) {
     res.status(404).json({ error: "Submission not found" });
+    return;
+  }
+  if (paper.uploadedById === req.user!.id) {
+    res.status(403).json({ error: "Conflict of interest: You cannot review or approve your own submission." });
     return;
   }
   await db.transaction(async (tx) => {
