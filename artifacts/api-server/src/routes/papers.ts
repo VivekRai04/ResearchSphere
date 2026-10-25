@@ -369,7 +369,31 @@ router.get("/papers", async (req: Request, res: Response) => {
   if (q && semantic) {
     try {
       const { embedQuery } = await import("../lib/ai.js");
-      const queryEmbedding = await embedQuery(q);
+
+      // Expand common academic / tech abbreviations for richer embedding context
+      const acronyms: Record<string, string> = {
+        repo: "repository",
+        repos: "repositories",
+        ai: "artificial intelligence",
+        ml: "machine learning",
+        dl: "deep learning",
+        nlp: "natural language processing",
+        llm: "large language model",
+        llms: "large language models",
+        rag: "retrieval augmented generation",
+        ann: "artificial neural network",
+        db: "database",
+        cv: "computer vision",
+        iot: "internet of things",
+      };
+
+      const expandedWords = q.split(/\s+/).map((word) => {
+        const clean = word.toLowerCase().replace(/[^a-z0-9]/g, "");
+        return acronyms[clean] ? `${word} (${acronyms[clean]})` : word;
+      });
+      const expandedQuery = expandedWords.join(" ");
+
+      const queryEmbedding = await embedQuery(expandedQuery);
       const { sql } = await import("drizzle-orm");
 
       // Query vector distances for all embedded papers
@@ -403,7 +427,7 @@ router.get("/papers", async (req: Request, res: Response) => {
         return isSemanticMatch || isLexicalMatch;
       });
 
-      // Rank by combined semantic similarity and keyword relevance
+      // Rank by combined semantic similarity and keyword relevance, and calculate match percentage
       matched.sort((a: any, b: any) => {
         const distA = distMap.get(a.id) ?? 1.0;
         const distB = distMap.get(b.id) ?? 1.0;
@@ -415,7 +439,20 @@ router.get("/papers", async (req: Request, res: Response) => {
         return scoreB - scoreA;
       });
 
-      papers = matched;
+      // Attach normalized semantic similarity score (50% - 99%)
+      papers = matched.map((p: any) => {
+        const dist = distMap.get(p.id);
+        const tfidf = tfidfMap.get(p.id) ?? 0;
+        let similarity: number | null = null;
+        if (dist !== undefined) {
+          // Normalize cosine distance (typical good match: 0.35 - 0.85) to an intuitive 60% - 98% percentage
+          const normalized = Math.round(Math.max(45, Math.min(99, (1 - (dist - 0.3) / 0.7) * 100)));
+          similarity = tfidf > 0 ? Math.min(99, normalized + 5) : normalized;
+        } else if (tfidf > 0) {
+          similarity = 75;
+        }
+        return { ...p, similarity };
+      });
     } catch (error) {
       console.error("Semantic search failed, falling back to TF-IDF:", error);
       papers = rankByTfidf(papers, q, (paper) =>

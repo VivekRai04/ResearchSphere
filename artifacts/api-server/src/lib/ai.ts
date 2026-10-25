@@ -36,11 +36,38 @@ export async function processPaperEmbedding(
       extractionStatus: "COMPLETED",
     });
 
-    // 3. Request embeddings from Python AI service
+    // 3. Build a high-density semantic text representation from paper metadata + abstract
+    const { paperVersionsTable, papersTable, departmentsTable } = await import("@workspace/db/schema");
+    const { eq } = await import("drizzle-orm");
+
+    const [paperRecord] = await db
+      .select({
+        title: papersTable.title,
+        abstract: papersTable.abstract,
+        researchArea: papersTable.researchArea,
+        paperType: papersTable.paperType,
+        keywords: papersTable.keywords,
+        departmentName: departmentsTable.name,
+      })
+      .from(paperVersionsTable)
+      .innerJoin(papersTable, eq(paperVersionsTable.paperId, papersTable.id))
+      .leftJoin(departmentsTable, eq(papersTable.departmentId, departmentsTable.id))
+      .where(eq(paperVersionsTable.id, paperVersionId))
+      .limit(1);
+
+    let semanticText = "";
+    if (paperRecord) {
+      const kw = Array.isArray(paperRecord.keywords) ? paperRecord.keywords.join(", ") : "";
+      semanticText = `Title: ${paperRecord.title}\nDepartment: ${paperRecord.departmentName ?? ""}\nResearch Area: ${paperRecord.researchArea}\nKeywords: ${kw}\nAbstract: ${paperRecord.abstract}`;
+    } else {
+      semanticText = extractedText.substring(0, 2000);
+    }
+
+    // 4. Request embeddings from Python AI service
     const response = await fetch(`${AI_SERVICE_URL}/embed`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: extractedText.substring(0, 8000) }), // truncate for token limit if necessary
+      body: JSON.stringify({ text: semanticText }),
     });
 
     if (!response.ok) {
@@ -50,16 +77,17 @@ export async function processPaperEmbedding(
 
     const { embedding, model, dimensions } = (await response.json()) as any;
 
-    // 4. Save embeddings
+    // 5. Save embeddings (upsert/delete old if exists)
+    await db.delete(paperEmbeddingsTable).where(eq(paperEmbeddingsTable.paperVersionId, paperVersionId));
     await db.insert(paperEmbeddingsTable).values({
       id: newId(),
       paperVersionId,
       embedding,
-      modelName: model,
+      modelName: model || "all-mpnet-base-v2",
       modelVersion: "1.0",
     });
 
-    console.log(`Successfully generated embeddings for paper version ${paperVersionId}`);
+    console.log(`Successfully generated dense semantic embeddings for paper version ${paperVersionId}`);
   } catch (error) {
     console.error(`Failed to process embeddings for paper version ${paperVersionId}:`, error);
     // Mark as failed if we at least have a record, but for now just logging is fine

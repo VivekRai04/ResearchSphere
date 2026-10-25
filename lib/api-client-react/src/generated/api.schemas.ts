@@ -151,6 +151,8 @@ export interface Paper {
   complexity?: string | null;
   /** @nullable */
   rejectionReason?: string | null;
+  /** @nullable */
+  similarity?: number | null;
 }
 
 export interface CommentInput {

@@ -148,7 +148,17 @@ function PaperRow({ paper, compact = false, onBookmark, bookmarked = false }: { 
     <div className="flex items-start gap-4">
       <span className="mt-1 hidden size-10 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground sm:flex"><FileText size={18} strokeWidth={1.6} /></span>
       <div className="min-w-0 flex-1">
-        <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-data text-[9px] uppercase tracking-[.12em] text-muted-foreground"><span>{paper.departmentName || 'Research'}</span><span className="text-border">/</span><span>{paper.researchArea}</span><span className="ml-1 rounded-sm bg-secondary/75 px-1.5 py-0.5 text-[8px] text-secondary-foreground">{paper.paperType}</span></div>
+        <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-data text-[9px] uppercase tracking-[.12em] text-muted-foreground">
+          <span>{paper.departmentName || 'Research'}</span>
+          <span className="text-border">/</span>
+          <span>{paper.researchArea}</span>
+          <span className="ml-1 rounded-sm bg-secondary/75 px-1.5 py-0.5 text-[8px] text-secondary-foreground">{paper.paperType}</span>
+          {typeof paper.similarity === 'number' && (
+            <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-semibold text-primary">
+              <Sparkles size={11} /> {paper.similarity}% Match
+            </span>
+          )}
+        </div>
         <Link href={`/papers/${paper.id}`} className="font-editorial text-[21px] leading-[1.2] text-foreground no-underline transition-colors hover:text-primary sm:text-[24px]">{paper.title}</Link>
         {!compact && <p className="mt-2 line-clamp-2 max-w-4xl text-[12px] leading-[1.7] text-muted-foreground">{paper.abstract}</p>}
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground"><Link href={`/authors/${paper.uploadedById}`} className="font-medium text-foreground/75 no-underline hover:text-primary">{paper.authorName}</Link><span>·</span><span>{paper.year}</span>{paper.doi && <><span>·</span><span className="font-data">DOI {paper.doi}</span></>}</div>

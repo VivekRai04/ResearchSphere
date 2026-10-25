@@ -265,7 +265,8 @@ export const ListPapersResponseItem = zod.object({
   "citedByCount": zod.number().int(),
   "readingTime": zod.number().int().nullish(),
   "complexity": zod.string().nullish(),
-  "rejectionReason": zod.string().nullish()
+  "rejectionReason": zod.string().nullish(),
+  "similarity": zod.number().nullish()
 })
 export const ListPapersResponse = zod.array(ListPapersResponseItem)
 
